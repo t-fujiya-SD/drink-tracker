@@ -968,13 +968,13 @@ function Reports({data,setData,goal,config}){
   },[data.tables]);
 
   const getDrinkCount=date=>{
-    // テーブルレシートのdrinks配列から集計
+    // テーブルレシートから集計（drinks配列 or drinkCount フィールドどちらも対応）
     const ts=tablesByDate[date];
     if(ts&&ts.length){
-      const dc=ts.reduce((s,t)=>s+(t.drinks||[]).reduce((ss,d)=>ss+(d.qty||0),0),0);
-      if(dc>0)return dc; // drinks配列がある場合のみ優先
+      const dc=ts.reduce((s,t)=>s+((t.drinks||[]).length>0?(t.drinks||[]).reduce((ss,d)=>ss+(d.qty||0),0):(t.drinkCount||0)),0);
+      if(dc>0)return dc;
     }
-    // drinkがない（ジャーナル抽出テーブルなど）はZレポートのdrinkCountを使う
+    // テーブルデータがない場合はZレポートのdrinkCountを使う
     const day=(data.days||[]).find(d=>d.date===date);
     return(day?.drinkCount>0)?day.drinkCount:null;
   };
