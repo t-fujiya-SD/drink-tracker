@@ -1,0 +1,2688 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ドリンク売上トラッカー</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;--surface3:#e8e6de;
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
+  --text:#1a1917;--text2:#6b6960;--text3:#9e9d96;
+  --blue:#3b6bde;--green:#2a9e55;--amber:#d97706;--red:#dc2626;
+  --r:8px;--r-lg:14px;
+}
+body{font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
+#root{max-width:760px;margin:0 auto;padding:20px 14px 80px}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:16px 20px;margin-bottom:10px}
+.card-sm{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.lbl{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px}
+input,select{width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--r);font-size:13px;font-family:inherit;background:var(--surface);color:var(--text);outline:none}
+input:focus,select:focus{border-color:var(--text)}
+button{padding:8px 14px;border:0.5px solid var(--border2);border-radius:var(--r);font-size:13px;font-family:inherit;background:var(--surface);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:background .1s}
+button:hover{background:var(--surface2)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--text);color:#fff;border-color:var(--text);width:100%;justify-content:center;padding:11px;font-size:14px;font-weight:600;border-radius:var(--r-lg)}
+.btn-primary:hover{background:#333}
+.btn-primary:disabled{background:var(--text3);border-color:var(--text3)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.row{display:flex;align-items:center;gap:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin 1s linear infinite;display:inline-block}
+.upload-zone{border:1.5px dashed var(--border2);border-radius:var(--r-lg);padding:24px;text-align:center;cursor:pointer;background:var(--surface2)}
+.upload-zone:hover{border-color:var(--blue);background:#eff3ff}
+.metric-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;text-align:center}
+.metric-val{font-size:16px;font-weight:700;letter-spacing:-0.02em;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.metric-lbl{font-size:10px;color:var(--text2)}
+.nav-tabs{display:flex;gap:3px;background:#ece9e0;border-radius:12px;padding:3px;margin-bottom:16px}
+.nav-tab{flex:1;border:none;border-radius:9px;padding:8px 4px;font-size:12px;font-weight:400;background:transparent;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;font-family:inherit}
+.nav-tab.active{background:#fff;color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.api-bar{background:#fffbeb;border:0.5px solid #fcd34d;border-radius:var(--r-lg);padding:12px 16px;margin-bottom:12px}
+.receipt-img{width:100%;border-radius:var(--r);border:0.5px solid var(--border);max-height:200px;object-fit:contain;background:#f9f9f7;display:block;margin-bottom:10px}
+.seg-ctrl{display:flex;background:var(--surface2);border-radius:var(--r);padding:2px;gap:2px}
+.seg-btn{flex:1;border:none;border-radius:6px;padding:5px 6px;font-size:11px;font-weight:400;background:transparent;color:var(--text2);cursor:pointer;font-family:inherit}
+.seg-btn.active{background:#fff;color:var(--text);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.07)}
+.scroll-x{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:6px 8px;color:var(--text3);font-weight:500;border-bottom:0.5px solid var(--border2);white-space:nowrap}
+td{padding:8px 8px;border-bottom:0.5px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.empty{text-align:center;padding:32px 16px;color:var(--text2)}
+.empty i{font-size:32px;display:block;margin-bottom:8px;color:var(--text3)}
+/* SVG Chart */
+.chart-wrap{position:relative;width:100%;overflow:hidden}
+.bar-tooltip{position:absolute;background:rgba(26,25,23,.85);color:#fff;font-size:11px;padding:4px 8px;border-radius:5px;pointer-events:none;white-space:nowrap;transform:translateX(-50%);z-index:10}
+/* Goal */
+.goal-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);margin-bottom:12px;font-size:13px}
+.goal-bar input{width:88px;padding:3px 6px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;text-align:right}
+.achievement-banner{padding:14px;border-radius:var(--r);border:0.5px solid;margin-bottom:12px}
+.achievement-progress{height:8px;border-radius:4px;background:var(--border);margin:6px 0;overflow:hidden}
+.achievement-progress-fill{height:100%;border-radius:4px;transition:width .3s}
+.metric-sub{font-size:10px;margin-top:3px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const {useState,useEffect,useRef,useMemo}=React;
+const MODEL='claude-opus-4-5';
+const SKEY='drink_tracker_v2';
+const KEYKEY='drink_tracker_key';
+const DAYS=['日','月','火','水','木','金','土'];
+
+function loadData(){try{return JSON.parse(localStorage.getItem(SKEY)||'{}')}catch{return{}}}
+function saveData(d){
+  try{
+    const json=JSON.stringify(d);
+    localStorage.setItem(SKEY,json);
+  }catch(e){
+    console.error('saveData failed:',e);
+    alert('⚠️ データの保存に失敗しました。ストレージ容量を確認してください。\n'+e.message);
+  }
+}
+function loadKey(){return localStorage.getItem(KEYKEY)||''}
+function saveKey(k){localStorage.setItem(KEYKEY,k)}
+const GKEY='drink_tracker_goal';
+function loadGoal(){return parseInt(localStorage.getItem(GKEY)||'0')||0}
+function saveGoal(v){localStorage.setItem(GKEY,String(v))}
+const CKEY='drink_tracker_config';
+function loadConfig(){try{const c=JSON.parse(localStorage.getItem(CKEY)||'{}');return{taxRate:c.taxRate??10,serviceRate:c.serviceRate??10}}catch{return{taxRate:10,serviceRate:10}}}
+function saveConfig(c){localStorage.setItem(CKEY,JSON.stringify(c))}
+const MKEY='drink_tracker_master';
+/* 初期マスターデータ（新規デバイスでも初回から登録済み状態） */
+const DEFAULT_MASTER={
+  drinks:["白穂乃香","エビス生ビール","古越龍山 陳年10年360ml","ハイボール","古越龍山 陳年10年180ml","黒ウーロン茶","古越龍山 陳年8 BT","紹興貴酒 陳年15年360ml","飲み放題","テタンジェ ブリュット レゼルヴ","紹興酒飲み比べなみなみセット","ノンアルコールビール(サッポロ)","ベリンジャー シャルドネ","抹茶白穂乃香","ベリンジャー シャルドネGL","ビール　SP","古越龍山 陳年10年グラス","霧島エイト","紹興貴酒 陳年15年180ml","ノンアルコール梅酒（ソーダ）","鮮杏蜜酒","抹茶グレープフルーツ","白州NV","ジンジャエール","ノンアルコールスパークリングBT","ベリンジャー カベルネソーヴィニヨンGL","グラススパークリング","ベリンジャー カベルネソーヴィニヨン","レザルム ド ラグランジェ","ジャスミン梅酒","シャブリ ウィリアム　フェーブル","陳年20年花彫酒","紹興貴酒 陳年15年グラス","青島ビール","ジンジャエール(辛口)","白穂乃香ハーフ","バローロ","サッポロ黒ラベル","抹茶紹興酒ハイボール","白州NV BT","アップルジュース","デュワーズ　ホワイトラベル　BT","ピエールポネル　シャルドネ","オレンジジュース","アサヒスーパードライ","オールドパーBT","吉四六","ペリエ","桂花陳酒","コカ・コーラ","オールドパー","汾  酒","セグラビュータス ブリュット レゼルバ","ジントニック","レモネード","ル セー ド カロン セギュール","W／プレミアムソーダ","レモンサワー","平日LNノンアルコールビール(サッポロ)","抹茶焼酎ソーダ","ピエールポネル　ピノノワール","カクテルSP","ノンアルライチソーダ","ウーロン茶ハイ","紹興酒花彫陳年五年　2合","白穂乃果","平日LNノンアルコール梅酒（ソーダ）","ピエールポネル　シャルドネGL","ねのひ吟醸花風月300","中国酒SP","ノンアルカシスオレンジ","エビス生ビールハーフ","宝焼酎ボトル","ねのひ極上辛口720","ノンアルカシスウーロン","鳥飼","古越龍山 陳年8年GL","紹興酒花彫陳年五年　1合","ザ・マッカラン12年","ノンアルライチグレープフルーツ","アサヒオフ缶","ピエールポネル　ピノノワールGL","ランチコーヒー","盛田WHITE500","平日LNノンアルライチソーダ","マリアージュドリンク","メーカーズマーク","ミネラルウォーター","ノンアルカシスソーダ","ノンアルライチオレンジ","W／ミネラルウォーター","ル セー ド カロン セギュールGL","平日LNノンアルカシスウーロン","モスコミュール","ウイスキーSP","キリンビール","W／ウーロン茶","焼酎SP","プレミアムソーダ","平日LNノンアルカシスオレンジ","平日LNノンアルカシスソーダ","平日LNノンアルライチグレープフルーツ","鮮杏蜜酒ソーダ"],
+  excludes:["輝","SPコース","凛","ランチ5,000","蘭","ふかひれの姿煮（中）","ふかひれの姿煮（大）","北京ダック（一枚）","冷菜盛り合わせ（極）","牛ﾌｨﾚｽﾃｰｷ蒸しﾊﾟﾝ添え","彩","アスパラ春巻","蟹の卵入りふかひれ","五目入り焼きそば","チャーハン","冷菜盛り合わせ（小）","ふかひれ醤油味スープ","活け鮑の蒸し物広東風","各種前菜盛り合わせ","高島屋クーポン6,500","はるまき","伊勢海老蒸物広東風","響","蟹肉とﾚﾀｽ入りﾁｬｰﾊﾝ","海老のﾁﾘｿｰｽ煮(極)","帆立貝彩り野菜炒め極","蟹肉入り燕の巣のｽｰﾌﾟ","アンニン豆腐","三種冷菜盛り合わせ極","薬味入りつゆそばハーフ","帆立貝彩り野菜炒め小","蟹爪の揚げ物","五目入りつゆそば","ｱﾝﾆﾝ豆腐のﾚﾓﾝ添え","前菜SP","蘭コース　トリュフ魚翅変更","二種冷菜盛り合わせ極","鮑のｵｲｽﾀｰｿｰｽ煮込み極","蟹肉いりふかひれ","ﾀﾋﾟｵｶ入りｺｺﾅｯﾂﾐﾙｸ","海老のトースト揚げ","すぶた（極）","焼きニラ餃子","鮑のｸﾘｰﾑ煮込み(小)","黒酢すぶた（極）","高島屋クーポン13,000","蘭コース　ダックロース追加","彩り野菜の炒め（極）","マーボー豆腐（極）","揚げワンタン","巻海老と春雨煎り煮極","海の幸入り八宝菜（極）","海老入り蒸し餃子","海老のﾁﾘｿｰｽ煮(小)","牛肉細切ﾋﾟｰﾏﾝ炒め極","中国風野菜グラタン","牛肉細切ﾋﾟｰﾏﾝ炒め小","海の幸入りつゆそば","メロン入り杏仁豆腐","薬味入りつゆそば","牛肉細切り入り焼そば","スペシャルブレンド","クラゲの冷製（極）","鮑のｵｲｽﾀｰｿｰｽ煮込み小","釜焼ﾁｬｰｼｭｰ葱つゆそば","チャーハンT/O","三種冷菜盛り合わせ小","海鮮SP","ワンタンスープ","あわびSP","四川風ﾏｰﾎﾞｰ豆腐(極)","蒸し鶏の冷製（小）","海の幸入り焼きそば","クラゲの冷製（小）","海老入りつゆそば","鮑のｸﾘｰﾑ煮込み(極)","特選海鮮入り炒飯T/O","二種冷菜盛り合わせ小","シュウマイ","鮑のグラタン","一本ナマコの醤油煮込み","五目入練り豆腐の蒸物　小","蒸し鶏の冷製（極）","五目入り焼きそばT/O","海老SP","肉まんじゅうT/O","海老のﾏﾖﾈｰｽﾞｿｰｽ和極","海老入り焼きそば","釜焼ﾁｬｰｼｭｰ葱つゆそばハーフ","サンラータン","五目入りつゆそばハーフ","海の幸入り八宝菜（小）","蒸し鶏と葱のつゆそば","マーボー豆腐（小）","麺SP","中式和牛","牛肉と花韮の炒め(極)","魚の甘酢掛け（極）","特製チャーシュー(極)","彩り野菜の炒め（小）","点心SP","バンバンジー（極）","巻海老と春雨煎り煮小","鶏もも唐揚香味ｿｰｽ極","ミッドアフタヌーン","ふかひれSP","活き巻海老ｽﾊﾟｲｽｿｰｽ揚","野菜SP","鶏肉とｶｼｭｰﾅｯﾂ炒め極","卵の白味入燕の巣ｽｰﾌﾟ","北京ダック（一枚）T/O","バニラアイスクリーム","抹茶アイスクリーム","胡麻団子あん入り","野菜のオイスターソース掛け（極）","小籠包","黒酢すぶた（小）","四川風ﾏｰﾎﾞｰ豆腐(小)","五目入練り豆腐の蒸物　極小","活き巻海老の丸茹で","蟹肉とﾚﾀｽ入りﾁｬｰﾊﾝハーフ","彩り野菜と海老炒め極","帆立貝黄にらの炒め小","白　　飯","光麺変更","ピータン（極）","デザートSP","かにたま（極）","かにたま（小）","鶏肉とﾌﾞﾛｯｺﾘｰ炒め極","五目入り掛けごはん","牛肉細切り入掛ごはん","はるまきT/O","牛肉と黄韮の炒め","海老の甘酢掛け（極）","魚の蒸し物広東風","相鴨の燻製揚げ半羽","鶏肉とｶｼｭｰﾅｯﾂ炒め小","ふかひれの姿煮（小）","個室ゆったりプラン","スペアリブ唐揚げ　極小","白菜の甘酢辛味漬け極","五目入り焼きそばハーフ","牛肉と花韮の炒め(小)","五目入りかた焼きそば","壱","飯SP","蟹肉とﾚﾀｽ入りﾁｬｰﾊﾝT/O","蟹肉と豆腐の煮込み極","フルーツ入り杏仁豆腐","帆立貝の葱、生姜炒め","帆立貝のグラタン","すぶた（小）","ブロッコリーの蟹肉あんかけ　小","クラゲの冷製（小）T/O","相鴨の燻製揚げ一羽","搾　　菜","叉焼麺","和牛ステーキ","冷菜盛り合わせ（極）T/O","シュウマイT/O","魚の甘酢掛け（小）","鶏もも唐揚香味ｿｰｽ小","海の幸入りつゆそばハーフ","牛肉細切り入つゆそば","三種冷菜盛り合わせ極T/O","海老のﾁﾘｿｰｽ煮（小）T/O","海の幸入り八宝菜（極）T/O","アンニン豆腐（カクテルなし）","コーンスープ","チャーハンハーフ","胡瓜の甘酢辛味漬け極","中国風野菜グラタンT/O","海老と玉子の炒め(小)","相鴨の燻製揚げ1/4","蟹肉と豆腐の煮込み小","牛肉細切ﾋﾟｰﾏﾝ炒め（小）T/O","牛肉細切り入り焼そばT/O","牛肉SP","冷菜盛り合わせ（小）T/O","牛肉細切り入掛ごはんT/O","海老と豆腐の煮込み極","鶏肉SP","ブロッコリーの蟹肉あんかけ　極小","彩り野菜の炒め（小）T/O","たまご炒飯ハーフ","胡麻団子あん入りT/O","肉まんじゅう","すぶた（小）T/O","黒酢すぶた（極）T/O","四川風ﾏｰﾎﾞｰ豆腐（極）T/O","特製チャーシュー(小)","帆立貝黄にらの炒め極","鶏肉とﾌﾞﾛｯｺﾘｰ炒め小","鶏肉の唐揚げ極","青梗菜のｸﾘｰﾑｿｰｽ掛け極","三種冷菜盛り合わせ（小）T/O","海老のﾁﾘｿｰｽ煮（極）T/O","蒸し鶏と葱のつゆそばハーフ","叉焼麺ハーフ","あんまんT/O","帆立貝彩り野菜炒め（銀杏6個入り）小盆","海の幸入り掛けごはん","海の幸入り焼きそばT/O","海の幸入りかた焼そばT/O","細切り搾菜","おこげの海鮮あんかけ　小","牛肉細切ﾋﾟｰﾏﾝ炒め（極）T/O","海老のトースト揚げT/O","巻海老と春雨煎り煮（小）T/O","搾  菜T/O","海老のﾏﾖﾈｰｽﾞｿｰｽ和小","彩り野菜と海老炒め小","海老の甘酢掛け（小）","有機栽培コロンビア","アンニン豆腐T/O","サンラーメン","ピーカンナッツT/O","マーボー豆腐（極）T/O","レモン","ピータン（小）","ｻﾞｰｻｲと鶏肉入りｽｰﾌﾟ","海老と豆腐の煮込み小","飯SPT/O","イカと野菜の炒め(小)","クラゲの冷製（極）T/O","豚肉とピーマンの細切り炒め(小)","バンバンジー（小）","魚の甘酢掛け（小）T/O","帆立貝彩り野菜炒め（極）","牛肉細切り入り焼そばハーフ","青菜入りつゆそば","巻海老と春雨煎り煮（極）T/O","海の幸入り焼きそばハーフ","牛肉と花韮の炒め(極) T/O","スペアリブの唐揚げ　小","三種前菜盛り合わせE 極","特製チャーシュー（小）T/O","鶏肉とｶｼｭｰﾅｯﾂ炒め（小）T/O","たまご炒飯","ハマグリの黒豆ソース","野菜のオイスターソース掛け（小）","蒸し鶏の冷製（小）T/O","かにたま（小）T/O","海老と玉子の炒め(極)","野菜入り玉子スープ","五目入りおこげ　極小","抹茶入り杏仁豆腐","中国風蒸しパン","イカと野菜の炒め(極)","アールグレイ紅茶","彩り野菜の炒め（極）T/O","サンラーメンハーフ","魚の甘酢掛け（極）T/O","すぶた（極）T/O","ワンタン入つゆそばハーフ","海老入りかた焼きそば","海老入り掛けごはん","五目あんかけチャーハン","ピーカンナッツ","特製チャーシュー（極）T/O","鶏肉とｶｼｭｰﾅｯﾂ炒め（極）T/O","海老入り焼きそばT/O","五目入りかた焼きそばT/O","蝦仁炒飯","ワンタン入つゆそば","白菜の甘酢辛味漬け（小）T/O","ﾛﾒｲﾝﾚﾀｽの炒め(極)","マーボー春雨（極）","アイスコーヒー","ｱﾝﾆﾝ豆腐のﾚﾓﾝ添えT/O","チャーシュー炒飯","あんまん","豚肉SP","かに玉のせつゆそばハーフ","蟹黄変更（コース）","チャーシュー炒飯　ハーフ","スープSP","焼きニラ餃子T/O","嗜好品"],
+  seats:["テーブル：T6","テーブル：T1","テーブル：T2","テーブル：T3","テーブル：T4","テーブル：T5","テーブル：T7","テーブル：T8","テーブル：T9","テーブル：SANGO","テーブル：KOHAK","テーブル：C1","テーブル：C2","テーブル：C3","テーブル：C4","テーブル：C5","テーブル：C6","テーブル：T10","テーブル：SUIGY","テーブル：RURI","テーブル：T11","テーブル：C7","テーブル：C8"]
+};
+function loadMaster(){
+  try{
+    const raw=localStorage.getItem(MKEY);
+    /* 未設定デバイスはデフォルトマスターを書き込んで返す */
+    if(!raw){saveMaster(DEFAULT_MASTER);return DEFAULT_MASTER;}
+    const m=JSON.parse(raw);
+    return{drinks:m.drinks||[],excludes:m.excludes||[],seats:m.seats||[]};
+  }catch{return DEFAULT_MASTER;}
+}
+function saveMaster(m){localStorage.setItem(MKEY,JSON.stringify(m))}
+function fmt(n,d=0){const v=parseFloat(n||0);return isNaN(v)?'0':v.toLocaleString('ja-JP',{maximumFractionDigits:d})}
+function today(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function weekLabel(d){const dt=new Date(d+'T00:00:00');return`${dt.getMonth()+1}/${dt.getDate()}(${DAYS[dt.getDay()]})`}
+function getDOW(d){return DAYS[new Date(d+'T00:00:00').getDay()]}
+
+/* ── PDF.js テキスト抽出 ── */
+async function loadPDFJS(){
+  if(window.pdfjsLib)return;
+  await new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload=res;s.onerror=rej;document.head.appendChild(s);
+  });
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc=
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+async function extractPDFText(b64){
+  await loadPDFJS();
+  const bin=atob(b64),bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  const pdf=await pdfjsLib.getDocument({data:bytes.buffer}).promise;
+  let text='';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const viewport=page.getViewport({scale:1});
+    const midX=viewport.width/2;
+    const content=await page.getTextContent();
+    /* 左右カラムに分離してからY座標でグループ化 */
+    const processCol=items=>{
+      const groups=[];
+      for(const item of items){
+        const y=item.transform[5],x=item.transform[4];
+        const g=groups.find(g=>Math.abs(g.y-y)<=3);
+        if(g)g.items.push({x,str:item.str});
+        else groups.push({y,items:[{x,str:item.str}]});
+      }
+      groups.sort((a,b)=>b.y-a.y);
+      return groups.map(g=>{
+        g.items.sort((a,b)=>a.x-b.x);
+        return g.items.map(i=>i.str).join('');
+      }).filter(l=>l.trim()).join('\n');
+    };
+    const left=content.items.filter(i=>i.transform[4]<midX);
+    const right=content.items.filter(i=>i.transform[4]>=midX);
+    text+=processCol(left)+'\n'+processCol(right)+'\n--- PAGE BREAK ---\n';
+  }
+  /* NFKC正規化：康熙部首(⽇⼈⼋等)→通常漢字(日人八等)に変換 */
+  return text.normalize('NFKC');
+}
+
+/* ── 伝票ジャーナル ルールベースパーサー ── */
+function parseJournalText(text,masterDrinks=[],masterExcludes=[]){
+  /* 全日付の出現位置を収集 */
+  const dateChanges=[];
+  const dateRe=/営業日付[：:\s]*(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日/g;
+  let dm;
+  while((dm=dateRe.exec(text))!==null){
+    const d=`${dm[1]}-${String(dm[2]).padStart(2,'0')}-${String(dm[3]).padStart(2,'0')}`;
+    if(!dateChanges.length||dateChanges[dateChanges.length-1].date!==d)
+      dateChanges.push({date:d,index:dm.index});
+  }
+  if(!dateChanges.length)return null;
+
+  /* 伝票ブロックのインデックスを収集 */
+  const ticketRe=/.\s*伝票\s*No[.\．]/g;
+  const ticketIdxs=[];
+  let tm2;
+  while((tm2=ticketRe.exec(text))!==null)ticketIdxs.push(tm2.index);
+  if(!ticketIdxs.length)return null;
+
+  /* 各伝票ブロックの日付を特定（直前の営業日付を使用） */
+  const getDate=idx=>{
+    let d=dateChanges[0].date;
+    for(const dc of dateChanges){if(dc.index<=idx)d=dc.date;else break;}
+    return d;
+  };
+
+  /* ドリンク判定 */
+  const DRINK_KW=['ビール','ワイン','日本酒','焼酎','カクテル','ハイボール','サワー','ウーロン','ジュース','コーラ','コーヒー','お茶','緑茶','スパークリング','シャンパン','梅酒','リキュール','紹興酒','ウイスキー','ブランデー','ミネラルウォーター','ソフトドリンク','ノンアルコール','レモン水','水','泡盛'];
+  const FOOD_KW=['コース','ランチ','ディナー','フード','料理','サービス料','チャージ'];
+  const norm=s=>s.replace(/\s/g,'');
+  const isDrink=name=>{
+    if(!name)return false;
+    const n=norm(name);
+    if(masterExcludes.some(e=>n.includes(norm(e))))return false;
+    if(masterDrinks.some(d=>{const dn=norm(d);return n.includes(dn)||dn.includes(n);}))return true;
+    if(FOOD_KW.some(k=>n.includes(k)))return false;
+    if(DRINK_KW.some(k=>n.includes(k)))return true;
+    return false;
+  };
+
+  /* 伝票ブロックを処理（インデックスベースで日付を追跡） */
+  const allTables=[];
+  for(let bi=0;bi<ticketIdxs.length;bi++){
+    const start=ticketIdxs[bi];
+    const end=ticketIdxs[bi+1]??text.length;
+    const block=text.slice(start,end);
+    const blockDate=getDate(start);
+    if(!block.includes('会計済'))continue;
+
+    const seatM=block.match(/テーブル[：:\s]*([^\s　]+)[\s　]+人数[：:\s]*(\d+)/);
+    if(!seatM)continue;
+    const seat=seatM[1].replace(/[：:]/g,'');
+    const covers=parseInt(seatM[2])||0;
+
+    const timeM=block.match(/退店時間[：:\s]*(\d{1,2}:\d{2})/);
+    const time=timeM?timeM[1].padStart(5,'0'):'';
+
+    /* 品目解析 */
+    const lines=block.split('\n').map(l=>l.trim()).filter(Boolean);
+    const drinks=[];
+    let drinkTotal=0,foodTotal=0,lastItem='';
+    const SKIP_RE=/^(合計|小計|税|サービス|現金|クレジット|電子|お預かり|おつり|品名|数量|金額|点数|登録|事業|状態|POS|入店|退店|テーブル|店舗|営業|担当|---|※|2店舗|端数)/;
+    const addItem=(name,qty,unitPrice,subtotal)=>{
+      if(!name||subtotal<=0)return;
+      if(isDrink(name)){drinks.push({name,qty,unitPrice,subtotal});drinkTotal+=subtotal;}
+      else{foodTotal+=subtotal;}
+    };
+    for(const line of lines){
+      if(SKIP_RE.test(line))continue;
+      if(/^[\d¥￥,\s\-\.\/%×x×]+$/.test(line))continue;
+      /* 1行フォーマット: 品名 ... 単価×数量 ... 小計 */
+      const sl=line.match(/^(.+?)\s{2,}(\d[\d,]*)\s*[×x×Xx]\s*(\d+)\s*[¥￥]?\s*([\d,]+)$/);
+      if(sl){
+        const iname=sl[1].trim();
+        if(iname&&!SKIP_RE.test(iname))
+          addItem(iname,parseInt(sl[3]),parseInt(sl[2].replace(/,/g,'')),parseInt(sl[4].replace(/,/g,'')));
+        lastItem='';continue;
+      }
+      /* 2行フォーマット: 単価×数量 ¥小計（前行が品名） */
+      const pm=line.match(/^([\d,]+)\s*[×x×Xx]\s*(\d+)\s*[¥￥\\]?\s*([\d,]+)/);
+      if(pm){
+        if(lastItem)addItem(lastItem,parseInt(pm[2]),parseInt(pm[1].replace(/,/g,'')),parseInt(pm[3].replace(/,/g,'')));
+        lastItem='';continue;
+      }
+      /* 品名行（次の価格行まで保持） */
+      if(line.length<=50)lastItem=line;
+    }
+
+
+    /* 税抜合計（1テーブルとして非現実的な金額はdrinkTotal+foodTotalで代替） */
+    const MAX_PER_TABLE=500000;
+    const totalM=block.match(/税抜合計[\s　]*[¥￥\\]?\s*([\d,]+)/);
+    const totalRaw=totalM?parseInt(totalM[1].replace(/,/g,'')):0;
+    const total=totalRaw>0&&totalRaw<=MAX_PER_TABLE?totalRaw:(drinkTotal+foodTotal);
+
+    /* コース名（店舗名・ヘッダー行は除外） */
+    const COURSE_KW=['コース','ランチ','ディナー','フード'];
+    const COURSE_SKIP=/^(合計|小計|税|サービス|登録|事業|店舗|営業|担当|POS|テーブル|入店|退店|状態|品名|数量|金額)/;
+    const courseLine=lines.find(l=>COURSE_KW.some(k=>l.includes(k))&&!COURSE_SKIP.test(l));
+    const course=courseLine||'';
+
+    /* covers=0は人数不明として除外 */
+    if(covers===0)continue;
+    if(total>0||drinkTotal>0){
+      allTables.push({date:blockDate,time,seat,covers,course,drinks,drinkTotal,foodTotal,total,
+        drinkPerCover:covers>0?drinkTotal/covers:0,
+        drinksPerCover:covers>0?drinks.reduce((s,d)=>s+d.qty,0)/covers:0});
+    }
+  }
+
+  if(!allTables.length)return null;
+
+  /* 日付ごとにグループ化して日次レコードを生成 */
+  const dateMap={};
+  for(const t of allTables){
+    if(!dateMap[t.date])dateMap[t.date]=[];
+    dateMap[t.date].push(t);
+  }
+  const isLunch=t=>t.time>='10:00'&&t.time<'17:00';
+  return Object.entries(dateMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([date,tables])=>{
+    const totalSales=tables.reduce((s,t)=>s+t.total,0);
+    const drinkSales=tables.reduce((s,t)=>s+t.drinkTotal,0);
+    const totalCovers=tables.reduce((s,t)=>s+t.covers,0);
+    const drinkCount=tables.reduce((s,t)=>s+t.drinks.reduce((ss,d)=>ss+d.qty,0),0);
+    const lT=tables.filter(isLunch),dT=tables.filter(t=>!isLunch(t));
+    return{date,totalSales,drinkSales,foodSales:totalSales-drinkSales,
+      totalCovers,drinkCount,tableCount:tables.length,
+      lunchCovers:lT.reduce((s,t)=>s+t.covers,0),dinnerCovers:dT.reduce((s,t)=>s+t.covers,0),
+      lunchDrinkSales:lT.reduce((s,t)=>s+t.drinkTotal,0),dinnerDrinkSales:dT.reduce((s,t)=>s+t.drinkTotal,0),
+      drinkPerCover:totalCovers>0?drinkSales/totalCovers:0,
+      drinkRatio:totalSales>0?drinkSales/totalSales:0,
+      notes:'',tables};
+  });
+}
+
+async function tryParseJournalPDF(b64,masterDrinks,masterExcludes){
+  try{
+    const text=await extractPDFText(b64);
+    return parseJournalText(text,masterDrinks,masterExcludes);
+  }catch(e){console.warn('Journal PDF parse failed:',e.message);return null;}
+}
+
+async function callVision(apiKey,b64,mime,prompt,maxTokens=2000){
+  const content=[];
+  if(b64){
+    content.push(mime==='application/pdf'
+      ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}}
+      :{type:'image',source:{type:'base64',media_type:mime,data:b64}});
+  }
+  content.push({type:'text',text:prompt});
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:MODEL,max_tokens:maxTokens,messages:[{role:'user',content}]})
+  });
+  const data=await res.json();
+  if(data.error)throw new Error(data.error.message);
+  return data.content[0].text;
+}
+function toB64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=()=>rej(new Error('読み込み失敗'));
+    r.readAsDataURL(file);
+  });
+}
+/* 画像をリサイズ圧縮してBase64を返す（APIの5MB制限対策） */
+async function compressImage(file,maxPx=1600){
+  if(file.type==='application/pdf'){
+    const b64=await toB64(file);
+    return{b64,mime:'application/pdf'};
+  }
+  return new Promise((res,rej)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      try{
+        const s=Math.min(1,maxPx/Math.max(img.width,img.height,1));
+        const c=document.createElement('canvas');
+        c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(blob=>{
+          if(!blob)return rej(new Error('圧縮失敗'));
+          const r=new FileReader();
+          r.onload=e=>res({b64:e.target.result.split(',')[1],mime:'image/jpeg'});
+          r.onerror=()=>rej(new Error('読み込み失敗'));
+          r.readAsDataURL(blob);
+        },'image/jpeg',0.85);
+      }catch(e){rej(e);}
+    };
+    img.onerror=()=>rej(new Error('画像読み込み失敗'));
+    img.src=url;
+  });
+}
+
+/* ── Simple Bar Chart (pure SVG, no deps) ── */
+function BarChart({data,valueKey,labelKey,color='#3b6bde',height=180,goalValue}){
+  const [tip,setTip]=useState(null);
+  if(!data||!data.length)return null;
+  const vals=data.map(d=>parseFloat(d[valueKey])||0);
+  const max=Math.max(...vals,goalValue||0)||1;
+  const W=600,H=height,PL=10,PR=28,PT=10,PB=32;
+  const chartW=W-PL-PR;
+  const barW=Math.max(8,chartW/data.length*0.6);
+  const gap=chartW/data.length;
+  const goalY=goalValue&&goalValue<=max?PT+(H-PT-PB)*(1-goalValue/max):null;
+  return React.createElement('div',{className:'chart-wrap',style:{height:H+40}},
+    React.createElement('svg',{viewBox:`0 0 ${W} ${H}`,style:{width:'100%',height:H}},
+      React.createElement('line',{x1:PL,y1:PT,x2:PL,y2:H-PB,stroke:'#e5e5e0',strokeWidth:1}),
+      React.createElement('line',{x1:PL,y1:H-PB,x2:W-PR,y2:H-PB,stroke:'#e5e5e0',strokeWidth:1}),
+      [0.25,0.5,0.75,1].map(r=>{
+        const y=PT+(H-PT-PB)*(1-r);
+        return React.createElement('g',{key:r},
+          React.createElement('line',{x1:PL,y1:y,x2:W-PR,y2:y,stroke:'#f0efe9',strokeWidth:1}),
+          React.createElement('text',{x:PL-2,y:y+3,textAnchor:'end',fontSize:8,fill:'#9e9d96'},`¥${fmt(max*r,0)}`)
+        );
+      }),
+      data.map((d,i)=>{
+        const v=vals[i];
+        const bh=(v/max)*(H-PT-PB);
+        const x=PL+i*gap+gap/2;
+        const y=H-PB-bh;
+        return React.createElement('g',{key:i,style:{cursor:'pointer'},
+          onMouseEnter:e=>setTip({i,x,v,label:d[labelKey]}),
+          onMouseLeave:()=>setTip(null)
+        },
+          React.createElement('rect',{x:x-barW/2,y,width:barW,height:bh,fill:tip&&tip.i===i?'#2050c0':color,rx:3}),
+          React.createElement('text',{x,y:H-PB+14,textAnchor:'middle',fontSize:9,fill:'#9e9d96'},d[labelKey])
+        );
+      }),
+      goalY!=null&&React.createElement('g',null,
+        React.createElement('line',{x1:PL,y1:goalY,x2:W-PR,y2:goalY,stroke:'#ef4444',strokeWidth:1.5,strokeDasharray:'5,3'}),
+        React.createElement('text',{x:W-PR+3,y:goalY+3,fontSize:8,fill:'#ef4444',fontWeight:600},'目標')
+      )
+    ),
+    tip&&React.createElement('div',{className:'bar-tooltip',style:{top:10,left:`${(tip.x/W)*100}%`}},
+      `${tip.label}: ¥${fmt(tip.v,0)}`
+    )
+  );
+}
+
+/* ── API Key Bar ── */
+function ApiBar({apiKey,setApiKey}){
+  const [open,setOpen]=useState(!apiKey);
+  const [v,setV]=useState('');
+  const ok=apiKey&&apiKey.startsWith('sk-');
+  return React.createElement('div',{className:'api-bar'},
+    React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10}},
+      React.createElement('div',{style:{flex:1}},
+        React.createElement('div',{style:{fontSize:12,fontWeight:600,color:ok?'#15803d':'#92400e',display:'flex',alignItems:'center',gap:5}},
+          React.createElement('i',{className:ok?'ti ti-lock':'ti ti-alert-circle'}),
+          ok?`APIキー設定済（...${apiKey.slice(-4)}）`:'AIを使うにはAPIキーが必要です'
+        ),
+        !ok&&React.createElement('div',{style:{fontSize:11,color:'#a16207',marginTop:2}},
+          React.createElement('a',{href:'https://console.anthropic.com',target:'_blank',style:{color:'#1d4ed8'}},'console.anthropic.com'),' でキーを取得'
+        )
+      ),
+      React.createElement('button',{onClick:()=>setOpen(o=>!o),style:{fontSize:11,padding:'4px 10px',flexShrink:0}},open?'閉じる':ok?'変更':'入力')
+    ),
+    open&&React.createElement('div',{style:{display:'flex',gap:6,marginTop:8}},
+      React.createElement('input',{type:'password',placeholder:'sk-ant-api03-...',value:v,onChange:e=>setV(e.target.value),style:{flex:1,fontSize:12}}),
+      React.createElement('button',{
+        onClick:()=>{if(v.startsWith('sk-')){saveKey(v);setApiKey(v);setOpen(false);setV('')}else alert('sk- で始まるキーを入力してください')},
+        style:{flexShrink:0,fontWeight:600}
+      },React.createElement('i',{className:'ti ti-check'}),' 保存')
+    )
+  );
+}
+
+/* ── Upload Zone ── */
+function UploadZone({onFile,label,hint,accept}){
+  const ref=useRef();
+  const handle=f=>{if(f&&(f.type.startsWith('image/')||f.type==='application/pdf'||f.name?.toLowerCase().endsWith('.csv')||f.type==='text/csv'||f.type==='text/plain'))onFile(f)};
+  return React.createElement('div',{
+    className:'upload-zone',
+    onClick:()=>ref.current.click(),
+    onDragOver:e=>e.preventDefault(),
+    onDrop:e=>{e.preventDefault();handle(e.dataTransfer.files[0])}
+  },
+    React.createElement('input',{ref,type:'file',accept:accept||'image/*,.pdf',style:{display:'none'},onChange:e=>handle(e.target.files[0])}),
+    React.createElement('i',{className:'ti ti-file-upload',style:{fontSize:28,color:'var(--text3)',marginBottom:6,display:'block'}}),
+    React.createElement('div',{style:{fontSize:14,fontWeight:600,color:'var(--text2)'}},label||'写真 / PDFをアップロード'),
+    hint&&React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginTop:4}},hint)
+  );
+}
+
+/* ── Table Entry ── */
+function TableEntry({apiKey,date,onSave}){
+  const [img,setImg]=useState(null);
+  const [imgB64,setImgB64]=useState(null);
+  const [mime,setMime]=useState('image/jpeg');
+  const [fileName,setFileName]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [result,setResult]=useState(null);
+  const [err,setErr]=useState('');
+
+  const handleFile=async f=>{
+    setErr('');setResult(null);setFileName(f.name||'');
+    setImg(f.type==='application/pdf'?'__pdf__':URL.createObjectURL(f));
+    try{const{b64,mime:m}=await compressImage(f);setImgB64(b64);setMime(m);}
+    catch(e){setErr('ファイル読み込みエラー: '+e.message);}
+  };
+
+  const analyze=async()=>{
+    if(!imgB64||!apiKey)return;
+    setLoading(true);setErr('');
+    try{
+      const {drinks:masterDrinks,excludes:masterExcludes,seats:masterSeats}=loadMaster();
+      const masterNote=masterDrinks.length
+        ?`\n【この店の登録済みドリンク商品マスター】以下の品名（または部分一致）は必ずdrinksに含めること：\n${masterDrinks.join('、')}\nマスターにない品名はドリンクかどうかを一般的な知識で判断する。`
+        :'';
+      const excludeNote=(masterExcludes&&masterExcludes.length)
+        ?`\n【除外リスト】以下の品名は絶対にdrinksに含めないこと（コース・フード商品）：\n${masterExcludes.join('、')}`
+        :'';
+      const seatNote=(masterSeats&&masterSeats.length)
+        ?`\n【席マスター】レシートに席名・テーブル番号・個室名等が記載されていれば "seat" に記載。以下の席名から最も近いものを選ぶこと（略称・番号でも照合）：\n${masterSeats.join('、')}\n記載がない場合は空文字。`
+        :'\n【席】レシートに席名・テーブル番号・個室名等が記載されていれば "seat" に記載。なければ空文字。';
+      const text=await callVision(apiKey,imgB64,mime,
+`このレストランのレシートを解析してください。JSONのみで返答（説明文・コードブロック不要）：
+{"covers":人数数値,"time":"HH:MM","seat":"席名（テーブル番号・個室名等。不明は空文字）","course":"コース名（不明は空文字）","drinks":[{"name":"品名","qty":数量数値,"unitPrice":単価数値,"subtotal":小計数値}],"drinkTotal":ドリンク合計数値,"foodTotal":フード合計数値,"total":合計数値,"notes":"特記事項（なければ空文字）"}
+timeは「退店時間」をHH:MM形式で抽出する（入店時間ではなく）。読み取れない場合は空文字""。
+【drinksの列挙ルール】以下のいずれかに該当する品目のみdrinksに含める：
+①アルコール類：生ビール・瓶ビール・ビール銘柄（例：白穂乃香・エビス・プレミアムモルツ等）、ワイン・シャンパン・スパークリング、日本酒・銘柄酒（例：獺祭・久保田等）、焼酎・泡盛、ウイスキー・ブランデー、カクテル・サワー・ハイボール、梅酒・リキュール、紹興酒・中国酒
+②ソフトドリンク類：ジュース・コーラ・ウーロン茶・緑茶・水・ミネラルウォーター・コーヒー・ノンアルコール飲料
+品名だけでは判断できない場合は単価・文脈から推測すること。料理・フード・コース料金・サービス料は絶対にdrinksに含めないこと。drinkTotalはdrinksの合計金額と一致させること。不明な金額は0。${excludeNote}${masterNote}${seatNote}`
+      );
+      const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
+      parsed.drinkPerCover=parsed.covers>0?parsed.drinkTotal/parsed.covers:0;
+      parsed.drinksPerCover=parsed.covers>0?(parsed.drinks||[]).reduce((s,d)=>s+(d.qty||0),0)/parsed.covers:0;
+      setResult(parsed);
+    }catch(e){setErr('解析エラー: '+e.message);}
+    finally{setLoading(false);}
+  };
+
+  const handleSave=()=>{
+    if(!result)return;
+    const nowTime=new Date().toTimeString().slice(0,5);
+    onSave({id:uid(),date,...result,time:result.time||nowTime,savedAt:new Date().toISOString()});
+    setImg(null);setImgB64(null);setResult(null);
+  };
+
+  const clearFile=()=>{setImg(null);setImgB64(null);setResult(null);setFileName('');};
+  return React.createElement('div',null,
+    !img&&React.createElement(UploadZone,{onFile:handleFile,label:'レシートを撮影 / PDF選択',hint:'画像・PDFどちらも対応'}),
+    img&&React.createElement('div',null,
+      img==='__pdf__'
+        ?React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',background:'var(--surface2)',borderRadius:'var(--r)',border:'0.5px solid var(--border)',marginBottom:10}},
+            React.createElement('i',{className:'ti ti-file-type-pdf',style:{fontSize:28,color:'var(--red)',flexShrink:0}}),
+            React.createElement('span',{style:{fontSize:13,fontWeight:600,wordBreak:'break-all'}},fileName)
+          )
+        :React.createElement('img',{src:img,className:'receipt-img'}),
+      !result&&React.createElement('div',{style:{display:'flex',gap:8,marginBottom:err?8:0}},
+        React.createElement('button',{onClick:clearFile,style:{flex:1}},
+          React.createElement('i',{className:'ti ti-x'}),' やり直し'
+        ),
+        React.createElement('button',{onClick:analyze,disabled:loading||!apiKey,style:{flex:2,background:'var(--blue)',color:'#fff',border:'none',fontWeight:600,justifyContent:'center'}},
+          loading?[React.createElement('i',{key:'i',className:'ti ti-loader spin'}),' 解析中...']
+                 :[React.createElement('i',{key:'i',className:'ti ti-sparkles'}),' AIで解析']
+        )
+      ),
+      err&&React.createElement('div',{style:{color:'var(--red)',fontSize:12,padding:'8px 12px',background:'#fee2e2',borderRadius:'var(--r)',marginBottom:8}},err),
+      result&&React.createElement('div',null,
+        React.createElement('div',{style:{fontSize:12,fontWeight:600,color:'var(--green)',display:'flex',alignItems:'center',gap:5,marginBottom:10}},
+          React.createElement('i',{className:'ti ti-check-circle'}),' 解析完了 — 内容を確認してください'
+        ),
+        React.createElement('div',{className:'grid2',style:{marginBottom:10}},
+          [{l:'人数',v:`${result.covers}名`},{l:'合計',v:`¥${fmt(result.total)}`},{l:'ドリンク計',v:`¥${fmt(result.drinkTotal)}`,c:'var(--blue)'},{l:'フード計',v:`¥${fmt(result.foodTotal)}`},{l:'1人あたりドリンク',v:`¥${fmt(result.drinkPerCover,0)}`,c:'var(--blue)'},{l:'1人D杯数',v:`${fmt(result.drinksPerCover,1)}杯`,c:'var(--blue)'}]
+          .map(({l,v,c})=>React.createElement('div',{key:l,className:'metric-card'},
+            React.createElement('div',{className:'metric-val',style:c?{color:c}:{}},v),
+            React.createElement('div',{className:'metric-lbl'},l)
+          ))
+        ),
+        React.createElement('div',{style:{display:'flex',gap:8,flexWrap:'wrap',marginBottom:8}},
+          result.seat&&React.createElement('div',{style:{display:'inline-flex',alignItems:'center',gap:4,padding:'3px 10px',background:'#f0fdf4',border:'1px solid #86efac',borderRadius:20,fontSize:12,color:'var(--green)'}},
+            React.createElement('i',{className:'ti ti-armchair'}),result.seat
+          ),
+          result.course&&React.createElement('div',{style:{display:'inline-flex',alignItems:'center',gap:4,padding:'3px 10px',background:'var(--surface2)',border:'1px solid var(--border2)',borderRadius:20,fontSize:12,color:'var(--text2)'}},
+            React.createElement('i',{className:'ti ti-tools-kitchen'}),result.course
+          )
+        ),
+        result.drinks&&result.drinks.length>0&&React.createElement('div',{style:{marginBottom:10}},
+          React.createElement('div',{className:'lbl',style:{marginBottom:6}},'ドリンク内訳'),
+          React.createElement('div',{className:'scroll-x'},
+            React.createElement('table',null,
+              React.createElement('thead',null,React.createElement('tr',null,['品名','数量','単価','小計'].map(h=>React.createElement('th',{key:h},h)))),
+              React.createElement('tbody',null,
+                result.drinks.map((d,i)=>React.createElement('tr',{key:i},
+                  React.createElement('td',null,d.name),
+                  React.createElement('td',null,`${d.qty}`),
+                  React.createElement('td',null,`¥${fmt(d.unitPrice)}`),
+                  React.createElement('td',{style:{fontWeight:600}},`¥${fmt(d.subtotal)}`)
+                ))
+              )
+            )
+          )
+        ),
+        React.createElement('div',{style:{display:'flex',gap:8}},
+          React.createElement('button',{onClick:clearFile,style:{flex:1}},
+            React.createElement('i',{className:'ti ti-x'}),' キャンセル'
+          ),
+          React.createElement('button',{onClick:handleSave,style:{flex:2,background:'var(--green)',color:'#fff',border:'none',fontWeight:600,justifyContent:'center'}},
+            React.createElement('i',{className:'ti ti-device-floppy'}),' 保存する'
+          )
+        )
+      )
+    )
+  );
+}
+
+/* ── Day Close ── */
+function DayClose({apiKey,date,tableRecords,onClose}){
+  const [img,setImg]=useState(null);
+  const [imgB64,setImgB64]=useState(null);
+  const [mime,setMime]=useState('image/jpeg');
+  const [fileName,setFileName]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [result,setResult]=useState(null);
+  const [err,setErr]=useState('');
+  const [manual,setManual]=useState(false);
+  const [mv,setMv]=useState({totalSales:'',totalCovers:'',drinkSales:''});
+
+  const tDrink=tableRecords.reduce((s,t)=>s+(t.drinkTotal||0),0);
+  const tFood=tableRecords.reduce((s,t)=>s+(t.foodTotal||0),0);
+  const tCovers=tableRecords.reduce((s,t)=>s+(t.covers||0),0);
+
+  const handleFile=async f=>{
+    setErr('');setResult(null);setFileName(f.name||'');
+    setImg(f.type==='application/pdf'?'__pdf__':URL.createObjectURL(f));
+    try{const{b64,mime:m}=await compressImage(f);setImgB64(b64);setMime(m);}
+    catch(e){setErr('ファイル読み込みエラー: '+e.message);}
+  };
+
+  const analyze=async()=>{
+    if(!imgB64||!apiKey)return;
+    setLoading(true);setErr('');
+    try{
+      const text=await callVision(apiKey,imgB64,mime,
+`これは日次締め（Z）レポートまたは日計レシートです。JSONのみで返答（説明文不要）：
+{"totalSales":総売上数値,"totalCovers":総客数数値,"drinkSales":ドリンク売上数値,"drinkCount":ドリンク総杯数数値,"foodSales":フード売上数値,"tableCount":組数数値,"lunchCovers":ランチ客数数値,"dinnerCovers":ディナー客数数値,"lunchDrinkSales":ランチドリンク売上数値,"dinnerDrinkSales":ディナードリンク売上数値,"notes":"特記事項（なければ空文字）"}
+drinkCountはドリンク品目の数量合計（杯・本・グラス等すべて合算）。ランチ（〜16:59）/ディナー（17:00〜）別データがレポートに記載されていれば抽出。記載がなければ0。不明な値は0。`
+      );
+      setResult(JSON.parse(text.replace(/```json|```/g,'').trim()));
+    }catch(e){setErr('解析エラー: '+e.message);}
+    finally{setLoading(false);}
+  };
+
+  const doClose=(d)=>{
+    const drinkSales=parseInt(d.drinkSales)||tDrink;
+    const covers=parseInt(d.totalCovers)||tCovers;
+    const totalSales=parseInt(d.totalSales)||0;
+    onClose({
+      date,totalSales,totalCovers:covers,drinkSales,
+      drinkCount:parseInt(d.drinkCount)||0,
+      foodSales:parseInt(d.foodSales)||tFood,
+      tableCount:parseInt(d.tableCount)||tableRecords.length,
+      lunchCovers:parseInt(d.lunchCovers)||0,
+      dinnerCovers:parseInt(d.dinnerCovers)||0,
+      lunchDrinkSales:parseInt(d.lunchDrinkSales)||0,
+      dinnerDrinkSales:parseInt(d.dinnerDrinkSales)||0,
+      drinkPerCover:covers>0?drinkSales/covers:0,
+      drinkRatio:totalSales>0?drinkSales/totalSales:0,
+      closedAt:new Date().toISOString(),notes:d.notes||''
+    });
+  };
+
+  return React.createElement('div',null,
+    React.createElement('div',{className:'card',style:{background:'#f0f9ff',borderColor:'#7dd3fc',marginBottom:10}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:8}},
+        React.createElement('i',{className:'ti ti-receipt',style:{marginRight:5}}),'本日のテーブル集計（',tableRecords.length,'テーブル）'
+      ),
+      React.createElement('div',{className:'grid3'},
+        [{l:'テーブル数',v:`${tableRecords.length}組`},{l:'客数合計',v:`${tCovers}名`},{l:'ドリンク合計',v:`¥${fmt(tDrink)}`}]
+        .map(({l,v})=>React.createElement('div',{key:l,style:{textAlign:'center'}},
+          React.createElement('div',{style:{fontSize:16,fontWeight:700}},v),
+          React.createElement('div',{style:{fontSize:10,color:'var(--text2)'}},l)
+        ))
+      )
+    ),
+    !manual&&React.createElement('div',null,
+      !img&&React.createElement('div',null,
+        React.createElement(UploadZone,{onFile:handleFile,label:'締めレポートを選択 / PDF可',hint:'ZレポートPDF・レシート画像どちらも対応'}),
+        React.createElement('button',{onClick:()=>setManual(true),style:{width:'100%',marginTop:8,justifyContent:'center',color:'var(--text2)'}},
+          React.createElement('i',{className:'ti ti-edit'}),' 手入力で締める'
+        )
+      ),
+      img&&React.createElement('div',null,
+        img==='__pdf__'
+          ?React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',background:'var(--surface2)',borderRadius:'var(--r)',border:'0.5px solid var(--border)',marginBottom:10}},
+              React.createElement('i',{className:'ti ti-file-type-pdf',style:{fontSize:28,color:'var(--red)',flexShrink:0}}),
+              React.createElement('span',{style:{fontSize:13,fontWeight:600,wordBreak:'break-all'}},fileName)
+            )
+          :React.createElement('img',{src:img,className:'receipt-img'}),
+        !result&&React.createElement('div',{style:{display:'flex',gap:8}},
+          React.createElement('button',{onClick:()=>{setImg(null);setImgB64(null);setFileName('');},style:{flex:1}},React.createElement('i',{className:'ti ti-x'}),' やり直し'),
+          React.createElement('button',{onClick:analyze,disabled:loading||!apiKey,style:{flex:2,background:'var(--blue)',color:'#fff',border:'none',fontWeight:600,justifyContent:'center'}},
+            loading?[React.createElement('i',{key:'i',className:'ti ti-loader spin'}),' 解析中...']:[React.createElement('i',{key:'i',className:'ti ti-sparkles'}),' AIで解析']
+          )
+        ),
+        err&&React.createElement('div',{style:{color:'var(--red)',fontSize:12,padding:'8px 12px',background:'#fee2e2',borderRadius:'var(--r)',marginTop:8}},err)
+      )
+    ),
+    manual&&React.createElement('div',{className:'card'},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:12}},React.createElement('i',{className:'ti ti-edit',style:{marginRight:5}}),'手動入力'),
+      React.createElement('div',{className:'grid3',style:{marginBottom:10}},
+        [{k:'totalSales',l:'総売上（円）'},{k:'totalCovers',l:'総客数'},{k:'drinkSales',l:'ドリンク売上（円）'}].map(({k,l})=>
+          React.createElement('div',{key:k},
+            React.createElement('label',{className:'lbl'},l),
+            React.createElement('input',{type:'number',value:mv[k],onChange:e=>setMv(p=>({...p,[k]:e.target.value})),placeholder:'0'})
+          )
+        )
+      ),
+      React.createElement('button',{
+        onClick:()=>doClose(mv),
+        style:{background:'var(--green)',color:'#fff',border:'none',fontWeight:600,justifyContent:'center',width:'100%',padding:'10px'}
+      },React.createElement('i',{className:'ti ti-lock'}),' 本日の営業を締める'),
+      React.createElement('button',{onClick:()=>setManual(false),style:{fontSize:12,color:'var(--text2)',marginTop:8}},
+        React.createElement('i',{className:'ti ti-camera'}),' 写真に切り替え'
+      )
+    ),
+    result&&React.createElement('div',null,
+      React.createElement('div',{className:'card',style:{background:'#f0fdf4',borderColor:'#86efac',marginBottom:10}},
+        React.createElement('div',{style:{fontSize:12,fontWeight:600,color:'var(--green)',marginBottom:8}},React.createElement('i',{className:'ti ti-check-circle',style:{marginRight:4}}),'解析完了'),
+        React.createElement('div',{className:'grid4'},
+          [{l:'総売上',v:`¥${fmt(result.totalSales)}`},{l:'総客数',v:`${result.totalCovers}名`},{l:'ドリンク売上',v:`¥${fmt(result.drinkSales)}`},{l:'テーブル数',v:`${result.tableCount||tableRecords.length}組`}]
+          .map(({l,v})=>React.createElement('div',{key:l,style:{textAlign:'center'}},
+            React.createElement('div',{style:{fontSize:14,fontWeight:700}},v),
+            React.createElement('div',{style:{fontSize:10,color:'var(--text2)'}},l)
+          ))
+        ),
+        React.createElement('div',{style:{marginTop:10,display:'flex',alignItems:'center',gap:8,padding:'8px 10px',background:'var(--surface2)',borderRadius:'var(--r)'}},
+          React.createElement('span',{style:{fontSize:12,color:'var(--text2)',flexShrink:0}},'D杯数'),
+          React.createElement('input',{type:'number',min:0,
+            value:result.drinkCount||'',
+            onChange:e=>setResult({...result,drinkCount:parseInt(e.target.value)||0}),
+            placeholder:'AIが読み取れない場合は手入力',
+            style:{flex:1,fontSize:13}}),
+          React.createElement('span',{style:{fontSize:12,color:'var(--text2)',flexShrink:0}},'杯')
+        )
+      ),
+      React.createElement('button',{
+        onClick:()=>doClose(result),
+        style:{background:'var(--green)',color:'#fff',border:'none',fontWeight:600,justifyContent:'center',width:'100%',padding:'11px',borderRadius:'var(--r-lg)',fontSize:14,display:'flex',alignItems:'center',gap:6,cursor:'pointer'}
+      },React.createElement('i',{className:'ti ti-lock'}),' 本日の営業を締める')
+    )
+  );
+}
+
+/* ── Goal Bar ── */
+function GoalBar({goal,setGoal}){
+  const [editing,setEditing]=useState(false);
+  const [v,setV]=useState('');
+  const handleSave=()=>{const n=parseInt(v);if(n>0){saveGoal(n);setGoal(n);setEditing(false);setV('');}};
+  return React.createElement('div',{className:'goal-bar'},
+    React.createElement('i',{className:'ti ti-target',style:{color:'var(--blue)',fontSize:15,flexShrink:0}}),
+    React.createElement('span',{style:{fontSize:12,color:'var(--text2)',flexShrink:0}},'1人あたり目標'),
+    editing
+      ?[
+          React.createElement('input',{key:'i',type:'number',value:v,onChange:e=>setV(e.target.value),placeholder:'例: 1500',autoFocus:true,onKeyDown:e=>e.key==='Enter'&&handleSave()}),
+          React.createElement('span',{key:'u',style:{fontSize:12,color:'var(--text2)',flexShrink:0}},'円'),
+          React.createElement('button',{key:'s',onClick:handleSave,style:{padding:'3px 10px',fontSize:12,background:'var(--blue)',color:'#fff',border:'none',flexShrink:0}},React.createElement('i',{className:'ti ti-check'})),
+          React.createElement('button',{key:'c',onClick:()=>setEditing(false),style:{padding:'3px 8px',fontSize:12,flexShrink:0}},React.createElement('i',{className:'ti ti-x'}))
+        ]
+      :goal>0
+        ?[
+            React.createElement('span',{key:'v',style:{fontWeight:700,fontSize:15,color:'var(--blue)',flex:1}},`¥${fmt(goal)}`),
+            React.createElement('button',{key:'e',onClick:()=>{setV(String(goal));setEditing(true);},style:{padding:'2px 8px',fontSize:11,color:'var(--text2)',flexShrink:0}},React.createElement('i',{className:'ti ti-edit'}),' 変更')
+          ]
+        :[
+            React.createElement('span',{key:'u',style:{color:'var(--text3)',fontSize:12,flex:1}},'未設定'),
+            React.createElement('button',{key:'e',onClick:()=>setEditing(true),style:{padding:'3px 12px',fontSize:12,background:'var(--blue)',color:'#fff',border:'none',flexShrink:0}},'設定する')
+          ]
+  );
+}
+
+/* ── Achievement Banner ── */
+function AchievementBanner({drinkPerCover,goal,provisional}){
+  if(!goal||!drinkPerCover)return null;
+  const pct=Math.round(drinkPerCover/goal*100);
+  const diff=Math.round(drinkPerCover-goal);
+  const color=pct>=100?'var(--green)':pct>=80?'var(--amber)':'#ef4444';
+  const bg=pct>=100?'#f0fdf4':pct>=80?'#fffbeb':'#fff5f5';
+  const barPct=Math.min(pct,100);
+  return React.createElement('div',{className:'achievement-banner',style:{borderColor:color,background:bg}},
+    React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}},
+      React.createElement('div',{style:{fontSize:12,fontWeight:600,color,display:'flex',alignItems:'center',gap:5}},
+        React.createElement('i',{className:'ti ti-target'}),
+        provisional?'暫定 目標達成率':'目標達成率',
+        React.createElement('span',{style:{fontSize:19,fontWeight:700,letterSpacing:'-0.02em',marginLeft:2}},`${pct}%`)
+      ),
+      diff>=0
+        ?React.createElement('span',{style:{fontSize:12,fontWeight:700,color:'var(--green)',background:'#dcfce7',padding:'2px 10px',borderRadius:20}},'達成！')
+        :React.createElement('span',{style:{fontSize:11,color:'var(--text2)'}},`あと ¥${fmt(-diff)} で達成`)
+    ),
+    React.createElement('div',{className:'achievement-progress'},
+      React.createElement('div',{className:'achievement-progress-fill',style:{width:`${barPct}%`,background:color}})
+    ),
+    React.createElement('div',{style:{fontSize:11,color:'var(--text2)',display:'flex',justifyContent:'space-between'}},
+      React.createElement('span',null,`${provisional?'暫定 ':''}¥${fmt(drinkPerCover,0)} / 1人`),
+      React.createElement('span',null,`目標 ¥${fmt(goal)}`)
+    )
+  );
+}
+
+/* ── Today Screen ── */
+function TodayScreen({apiKey,data,setData,goal,setGoal}){
+  const [mode,setMode]=useState('table');
+  const dateStr=today();
+  const dayData=(data.days||[]).find(d=>d.date===dateStr);
+  const tableRecords=(data.tables||[]).filter(t=>t.date===dateStr);
+
+  const [syncStatus,setSyncStatus]=useState(null);/* null | 'syncing' | 'ok' | 'err' */
+  const saveTable=rec=>{
+    setData(prev=>({...prev,tables:[...(prev.tables||[]),rec]}));
+    /* GASが設定されていればSheetsにも送信 */
+    const gasUrl=localStorage.getItem(GAS_URL_KEY)||DEFAULT_GAS_URL;
+    if(gasUrl){
+      setSyncStatus('syncing');
+      fetch(gasUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(rec)})
+        .then(()=>{setSyncStatus('ok');setTimeout(()=>setSyncStatus(null),3000);})
+        .catch(()=>{setSyncStatus('err');setTimeout(()=>setSyncStatus(null),4000);});
+    }
+  };
+  const closeDay=rec=>setData(prev=>({...prev,days:[...(prev.days||[]).filter(d=>d.date!==dateStr),rec]}));
+  const delTable=id=>{if(confirm('削除しますか？'))setData(prev=>({...prev,tables:(prev.tables||[]).filter(t=>t.id!==id)}))};
+
+  const tDrink=tableRecords.reduce((s,t)=>s+(t.drinkTotal||0),0);
+  const tCovers=tableRecords.reduce((s,t)=>s+(t.covers||0),0);
+  const provisionalDPC=tCovers>0?Math.round(tDrink/tCovers):null;
+
+  if(dayData) return React.createElement('div',null,
+    React.createElement(GoalBar,{goal,setGoal}),
+    React.createElement(AchievementBanner,{drinkPerCover:dayData.drinkPerCover,goal}),
+    React.createElement('div',{className:'card',style:{background:'#f0fdf4',borderColor:'#86efac',marginBottom:12}},
+      React.createElement('div',{style:{fontSize:14,fontWeight:700,color:'var(--green)',marginBottom:8}},
+        React.createElement('i',{className:'ti ti-check',style:{marginRight:6}}),'本日の営業を締めました'
+      ),
+      React.createElement('div',{className:'grid4'},
+        [{l:'総売上',v:`¥${fmt(dayData.totalSales)}`},{l:'総客数',v:`${dayData.totalCovers}名`},{l:'ドリンク売上',v:`¥${fmt(dayData.drinkSales)}`,c:'var(--blue)'},{l:'1人あたりドリンク',v:`¥${fmt(dayData.drinkPerCover,0)}`,c:'var(--blue)'}]
+        .map(({l,v,c})=>React.createElement('div',{key:l,className:'metric-card'},
+          React.createElement('div',{className:'metric-val',style:c?{color:c}:{}},v),
+          React.createElement('div',{className:'metric-lbl'},l)
+        ))
+      )
+    ),
+    React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:8}},`本日のテーブル（${tableRecords.length}件）`),
+    tableRecords.length===0&&React.createElement('div',{className:'empty'},React.createElement('i',{className:'ti ti-receipt-off'}),'テーブル記録なし'),
+    tableRecords.map(t=>React.createElement('div',{key:t.id,className:'card-sm',style:{marginBottom:6,borderLeft:'3px solid var(--blue)',display:'flex',justifyContent:'space-between',alignItems:'center'}},
+      React.createElement('div',null,
+        React.createElement('div',{style:{fontSize:12,fontWeight:600}},[t.time,' · ',t.covers,'名',t.seat?` · 🪑${t.seat}`:'',t.course?` · ${t.course}`:'']),
+        React.createElement('div',{style:{fontSize:11,color:'var(--text2)'}},`ドリンク ¥${fmt(t.drinkTotal)} · 合計 ¥${fmt(t.total)}`)
+      ),
+      React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
+        React.createElement('div',{style:{textAlign:'right'}},
+          React.createElement('div',{style:{fontSize:15,fontWeight:700,color:'var(--blue)'}},`¥${fmt(t.drinkPerCover,0)}`),
+          React.createElement('div',{style:{fontSize:10,color:'var(--text3)'}},'1人あたり')
+        ),
+        React.createElement('button',{onClick:()=>delTable(t.id),style:{padding:'4px 8px',fontSize:11,color:'var(--red)',borderColor:'#fca5a5',background:'#fee2e2'}},
+          React.createElement('i',{className:'ti ti-trash'})
+        )
+      )
+    ))
+  );
+
+  return React.createElement('div',null,
+    React.createElement(GoalBar,{goal,setGoal}),
+    React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
+      React.createElement('div',{style:{fontSize:14,fontWeight:700}},new Date().toLocaleDateString('ja-JP',{month:'long',day:'numeric',weekday:'short'})),
+      React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
+        /* Sheets同期ステータス */
+        syncStatus&&React.createElement('div',{style:{fontSize:11,display:'flex',alignItems:'center',gap:4,padding:'3px 8px',borderRadius:20,
+          background:syncStatus==='syncing'?'var(--surface2)':syncStatus==='ok'?'#f0fdf4':'#fee2e2',
+          color:syncStatus==='syncing'?'var(--text3)':syncStatus==='ok'?'var(--green)':'var(--red)',
+          border:'0.5px solid',borderColor:syncStatus==='syncing'?'var(--border)':syncStatus==='ok'?'#86efac':'#fca5a5'}},
+          syncStatus==='syncing'?[React.createElement('i',{key:'i',className:'ti ti-loader spin',style:{fontSize:11}}),'Sheets送信中...']
+          :syncStatus==='ok'?[React.createElement('i',{key:'i',className:'ti ti-cloud-check',style:{fontSize:11}}),'Sheets反映済み']
+          :[React.createElement('i',{key:'i',className:'ti ti-cloud-off',style:{fontSize:11}}),'Sheets送信失敗']
+        ),
+        React.createElement('div',{className:'seg-ctrl'},
+          [{v:'table',l:`テーブル(${tableRecords.length})`},{v:'close',l:'日次締め'}].map(({v,l})=>
+            React.createElement('button',{key:v,className:`seg-btn${mode===v?' active':''}`,onClick:()=>setMode(v)},l)
+          )
+        )
+      )
+    ),
+    mode==='table'&&React.createElement('div',null,
+      tableRecords.length>0&&React.createElement('div',{style:{marginBottom:12}},
+        tableRecords.map(t=>React.createElement('div',{key:t.id,className:'card-sm',style:{marginBottom:6,borderLeft:'3px solid var(--blue)',display:'flex',justifyContent:'space-between',alignItems:'center'}},
+          React.createElement('div',null,
+            React.createElement('div',{style:{fontSize:12,fontWeight:600}},[t.time,' · ',t.covers,'名',t.course?` · ${t.course}`:'']),
+            React.createElement('div',{style:{fontSize:11,color:'var(--text2)'}},`ドリンク¥${fmt(t.drinkTotal)} · 合計¥${fmt(t.total)}`)
+          ),
+          React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
+            React.createElement('div',{style:{textAlign:'right'}},
+              React.createElement('div',{style:{fontSize:15,fontWeight:700,color:'var(--blue)'}},`¥${fmt(t.drinkPerCover,0)}`),
+              React.createElement('div',{style:{fontSize:10,color:'var(--text3)'}},'1人あたり')
+            ),
+            React.createElement('button',{onClick:()=>delTable(t.id),style:{padding:'4px 8px',fontSize:11,color:'var(--red)',borderColor:'#fca5a5',background:'#fee2e2'}},
+              React.createElement('i',{className:'ti ti-trash'})
+            )
+          )
+        ))
+      ),
+      React.createElement(AchievementBanner,{drinkPerCover:provisionalDPC,goal,provisional:true}),
+      React.createElement(TableEntry,{apiKey,date:dateStr,onSave:saveTable})
+    ),
+    mode==='close'&&React.createElement(DayClose,{apiKey,date:dateStr,tableRecords,onClose:closeDay})
+  );
+}
+
+/* ── Reports ── */
+function Reports({data,setData,goal,config}){
+  const netFactor=1/((1+((config&&config.taxRate)||0)/100)*(1+((config&&config.serviceRate)||0)/100));
+  const net=v=>Math.round((v||0)*netFactor);
+  const [period,setPeriod]=useState('weekly');
+  const [rs,setRs]=useState('');
+  const [re,setRe]=useState('');
+  const [weekOffset,setWeekOffset]=useState(0); /* 0=今週, -1=先週, … */
+  const [expandedSeat,setExpandedSeat]=useState(null);
+  const fmtD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const [selDay,setSelDay]=useState(()=>{const d=new Date();d.setDate(d.getDate()-1);return fmtD(d);});
+
+  /* Zレポートのない日のテーブルデータから「仮の日次レコード」を生成 */
+  const tableDays=useMemo(()=>{
+    const zDates=new Set((data.days||[]).map(d=>d.date));
+    const map={};
+    (data.tables||[]).forEach(t=>{
+      if(zDates.has(t.date))return; /* Zレポートがある日はスキップ */
+      if(!map[t.date])map[t.date]=[];
+      map[t.date].push(t);
+    });
+    return Object.entries(map).map(([date,tables])=>{
+      const totalSales=tables.reduce((s,t)=>s+(t.total||0),0);
+      const drinkSales=tables.reduce((s,t)=>s+(t.drinkTotal||0),0);
+      const covers=tables.reduce((s,t)=>s+(t.covers||0),0);
+      return{date,totalSales,drinkSales,foodSales:totalSales-drinkSales,
+        totalCovers:covers,tableCount:tables.length,
+        drinkPerCover:covers>0?drinkSales/covers:0,
+        drinkRatio:totalSales>0?drinkSales/totalSales:0,
+        tableOnly:true}; /* テーブルデータのみフラグ */
+    });
+  },[data.tables,data.days]);
+
+  const days=useMemo(()=>[...(data.days||[]),...tableDays].sort((a,b)=>a.date.localeCompare(b.date)),[data.days,tableDays]);
+
+  /* 週次範囲（weekOffset=0 → 直近7日, -1 → その前の7日, …） */
+  const weekRange=useMemo(()=>{
+    const now=new Date();
+    const end=new Date(now.getFullYear(),now.getMonth(),now.getDate()+weekOffset*7);
+    const start=new Date(end.getFullYear(),end.getMonth(),end.getDate()-6);
+    return{start:fmtD(start),end:fmtD(end)};
+  },[weekOffset]);
+
+  const filtered=useMemo(()=>{
+    const now=new Date();
+    const fmtL=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const w7=fmtL(new Date(now.getFullYear(),now.getMonth(),now.getDate()-6));
+    if(period==='daily'){return days.filter(d=>d.date===selDay);}
+    if(period==='weekly'){return days.filter(d=>d.date>=weekRange.start&&d.date<=weekRange.end);}
+    if(period==='monthly'){const m=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;return days.filter(d=>d.date.startsWith(m));}
+    if(period==='custom'||period==='ld'||period==='seat'){if(rs&&re)return days.filter(d=>d.date>=rs&&d.date<=re);return days.filter(d=>d.date>=w7);}
+    return days;
+  },[days,period,rs,re,selDay,weekRange]);
+
+  const dowData=useMemo(()=>{
+    const map={};
+    DAYS.forEach(d=>{map[d]={dow:d,total:0,count:0}});
+    days.forEach(d=>{const dow=getDOW(d.date);map[dow].total+=(d.drinkPerCover||0);map[dow].count++;});
+    return DAYS.map(d=>({dow:d,avg:map[d].count>0?map[d].total/map[d].count:0,count:map[d].count}));
+  },[days]);
+
+  /* テーブルレコードを日付でインデックス化 */
+  const tablesByDate=useMemo(()=>{
+    const map={};
+    (data.tables||[]).forEach(t=>{if(!map[t.date])map[t.date]=[];map[t.date].push(t);});
+    return map;
+  },[data.tables]);
+
+  const getDrinkCount=date=>{
+    // テーブルレシートのdrinks配列から集計
+    const ts=tablesByDate[date];
+    if(ts&&ts.length){
+      const dc=ts.reduce((s,t)=>s+(t.drinks||[]).reduce((ss,d)=>ss+(d.qty||0),0),0);
+      if(dc>0)return dc; // drinks配列がある場合のみ優先
+    }
+    // drinkがない（ジャーナル抽出テーブルなど）はZレポートのdrinkCountを使う
+    const day=(data.days||[]).find(d=>d.date===date);
+    return(day?.drinkCount>0)?day.drinkCount:null;
+  };
+
+  const summary=useMemo(()=>{
+    if(!filtered.length)return null;
+    const tS=filtered.reduce((s,d)=>s+(d.totalSales||0),0);
+    const tD=filtered.reduce((s,d)=>s+(d.drinkSales||0),0);
+    const tC=filtered.reduce((s,d)=>s+(d.totalCovers||0),0);
+    /* 杯数（テーブルデータ or Zレポートの drinkCount がある日を集計） */
+    const datesWithDC=filtered.filter(d=>getDrinkCount(d.date)!==null);
+    const totalDC=datesWithDC.length?datesWithDC.reduce((s,d)=>s+(getDrinkCount(d.date)||0),0):null;
+    const coversWithDC=datesWithDC.reduce((s,d)=>s+(d.totalCovers||0),0);
+    /* net換算（税抜・サービス料抜き） */
+    const nS=net(tS),nD=net(tD);
+    return{days:filtered.length,totalSales:nS,totalDrink:nD,totalCovers:tC,
+      drinkPerCover:tC>0?nD/tC:0,drinkRatio:tS>0?tD/tS:0,avgDaily:nD/filtered.length,
+      totalDC,drinksPerCover:coversWithDC>0&&totalDC!==null?totalDC/coversWithDC:null,
+      avgDrinkPrice:totalDC&&totalDC>0?Math.round(nD/totalDC):null};
+  },[filtered,tablesByDate,data.days]);
+
+  /* L/D 集計（フィルタ済み期間のテーブルデータから） */
+  const ldFiltered=useMemo(()=>{
+    if(!filtered.length)return null;
+    const dates=new Set(filtered.map(d=>d.date));
+    const tables=(data.tables||[]).filter(t=>dates.has(t.date));
+    const isLunch=t=>(t.time||'00:00')>='10:00'&&(t.time||'00:00')<'17:00';
+    const tDC=t=>(t.drinks||[]).length>0?(t.drinks||[]).reduce((ss,d)=>ss+(d.qty||0),0):(t.drinkCount||0);
+    const agg=arr=>({
+      dc:arr.reduce((s,t)=>s+tDC(t),0),
+      covers:arr.reduce((s,t)=>s+(t.covers||0),0),
+      drinkSales:arr.reduce((s,t)=>s+(t.drinkTotal||0),0),
+    });
+    if(tables.length){
+      const l=agg(tables.filter(isLunch));
+      const di=agg(tables.filter(t=>!isLunch(t)));
+      const total=l.dc+di.dc;
+      if(total>0){
+        l.drinkPerCover=l.covers>0?l.drinkSales/l.covers:0;
+        di.drinkPerCover=di.covers>0?di.drinkSales/di.covers:0;
+        return{lunch:l,dinner:di,total,source:'table'};
+      }
+    }
+    /* Zレポートにランチ/ディナー別データがある場合 */
+    const lC=filtered.reduce((s,d)=>s+(d.lunchCovers||0),0);
+    const dC=filtered.reduce((s,d)=>s+(d.dinnerCovers||0),0);
+    const lD=filtered.reduce((s,d)=>s+(d.lunchDrinkSales||0),0);
+    const dD=filtered.reduce((s,d)=>s+(d.dinnerDrinkSales||0),0);
+    if(lC>0||dC>0){
+      return{
+        lunch:{covers:lC,drinkSales:lD,drinkPerCover:lC>0?lD/lC:0,dc:0},
+        dinner:{covers:dC,drinkSales:dD,drinkPerCover:dC>0?dD/dC:0,dc:0},
+        total:0,source:'z'
+      };
+    }
+    return null;
+  },[filtered,data.tables]);
+
+  /* ld/seat タブ用の日付範囲（Zレポートに依存せずテーブルデータを直接フィルタ） */
+  const ldSeatRange=useMemo(()=>{
+    const now=new Date();
+    const fmtL=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const w7=fmtL(new Date(now.getFullYear(),now.getMonth(),now.getDate()-6));
+    const todayStr=fmtL(now);
+    if(rs&&re)return{start:rs,end:re};
+    return{start:w7,end:todayStr};
+  },[rs,re]);
+
+  /* 席別集計（テーブルデータを日付範囲で直接フィルタ） */
+  const seatData=useMemo(()=>{
+    const tables=(data.tables||[]).filter(t=>t.seat&&t.date>=ldSeatRange.start&&t.date<=ldSeatRange.end);
+    if(!tables.length)return null;
+    const map={};
+    tables.forEach(t=>{
+      const s=t.seat;
+      if(!map[s])map[s]={seat:s,tableCount:0,covers:0,drinkSales:0,totalSales:0,dc:0,records:[]};
+      map[s].tableCount++;
+      map[s].covers+=(t.covers||0);
+      map[s].drinkSales+=(t.drinkTotal||0);
+      map[s].totalSales+=(t.total||0);
+      map[s].dc+=(t.drinks||[]).length>0?(t.drinks||[]).reduce((ss,d)=>ss+(d.qty||0),0):(t.drinkCount||0);
+      map[s].records.push(t);
+    });
+    return Object.values(map).map(s=>({...s,
+      records:s.records.sort((a,b)=>b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||'')),
+      drinkPerCover:s.covers>0?s.drinkSales/s.covers:0,
+      drinksPerCover:s.dc>0&&s.covers>0?s.dc/s.covers:null,
+      drinkRatio:s.totalSales>0?s.drinkSales/s.totalSales:0
+    })).sort((a,b)=>b.drinkPerCover-a.drinkPerCover);/* 1人あたりD売上降順 */
+  },[ldSeatRange,data.tables]);
+
+  /* L/D 集計（テーブルデータを日付範囲で直接フィルタ） */
+  const ldData=useMemo(()=>{
+    const tables=(data.tables||[]).filter(t=>t.date>=ldSeatRange.start&&t.date<=ldSeatRange.end);
+    if(!tables.length)return null;
+    const isLunch=t=>(t.time||'00:00')>='10:00'&&(t.time||'00:00')<'17:00';
+    const agg=arr=>{
+      const covers=arr.reduce((s,t)=>s+(t.covers||0),0);
+      const drinkSales=arr.reduce((s,t)=>s+(t.drinkTotal||0),0);
+      const totalSales=arr.reduce((s,t)=>s+(t.total||0),0);
+      const dc=arr.reduce((s,t)=>s+((t.drinks||[]).length>0?(t.drinks||[]).reduce((ss,d)=>ss+(d.qty||0),0):(t.drinkCount||0)),0);
+      return{tableCount:arr.length,covers,drinkSales,totalSales,dc,
+        drinkPerCover:covers>0?drinkSales/covers:0,
+        drinksPerCover:covers>0?dc/covers:0,
+        drinkRatio:totalSales>0?drinkSales/totalSales:0};
+    };
+    return{lunch:agg(tables.filter(isLunch)),dinner:agg(tables.filter(t=>!isLunch(t)))};
+  },[ldSeatRange,data.tables]);
+
+  if(!days.length)return React.createElement('div',{className:'empty'},
+    React.createElement('i',{className:'ti ti-chart-bar-off'}),'まだデータがありません',
+    React.createElement('div',{style:{fontSize:12,marginTop:4}},'日次締めを完了するとレポートが表示されます')
+  );
+
+  const isLD=period==='ld';
+  const isSeat=period==='seat';
+  const chartData=period==='dow'
+    ?dowData.map(d=>({name:d.dow,value:net(Math.round(d.avg))}))
+    :isLD
+      ?ldData?[{name:'ランチ',value:net(Math.round(ldData.lunch.drinkPerCover))},{name:'ディナー',value:net(Math.round(ldData.dinner.drinkPerCover))}]:[]
+      :isSeat
+        ?seatData?seatData.map(s=>({name:s.seat,value:net(s.drinkPerCover)})):[]
+        :filtered.map(d=>({name:weekLabel(d.date),value:net(d.drinkPerCover||0)}));
+
+  const LDCard=({session,label,color,icon})=>React.createElement('div',{className:'card'},
+    React.createElement('div',{style:{fontSize:13,fontWeight:700,color,marginBottom:10,display:'flex',alignItems:'center',gap:5}},
+      React.createElement('i',{className:`ti ti-${icon}`}),label
+    ),
+    React.createElement('div',{className:'grid2'},
+      [{l:'客数',v:`${session.covers}名`},{l:'テーブル数',v:`${session.tableCount}組`},
+       {l:'ドリンク売上（税抜）',v:`¥${fmt(net(session.drinkSales))}`,c:'var(--blue)'},{l:'1人D売上（税抜）',v:`¥${fmt(net(session.drinkPerCover),0)}`,c:'var(--blue)'},
+       {l:'1人D杯数',v:`${fmt(session.drinksPerCover,1)}杯`,c:'var(--blue)'},{l:'DR比率',v:`${fmt(session.drinkRatio*100,1)}%`,c:session.drinkRatio>=0.3?'var(--green)':'var(--amber)'}]
+      .map(({l,v,c})=>React.createElement('div',{key:l,className:'metric-card'},
+        React.createElement('div',{className:'metric-val',style:c?{color:c}:{}},v),
+        React.createElement('div',{className:'metric-lbl'},l)
+      ))
+    )
+  );
+
+  return React.createElement('div',null,
+    /* 期間セレクタ */
+    React.createElement('div',{style:{marginBottom:12}},
+      React.createElement('div',{className:'seg-ctrl'},
+        [{v:'daily',l:'日次'},{v:'weekly',l:'週次'},{v:'monthly',l:'月次'},{v:'dow',l:'曜日別'},{v:'ld',l:'L/D別'},{v:'seat',l:'席別'},{v:'custom',l:'期間'}].map(({v,l})=>
+          React.createElement('button',{key:v,className:`seg-btn${period===v?' active':''}`,onClick:()=>setPeriod(v)},l)
+        )
+      ),
+      period==='daily'&&React.createElement('div',{style:{display:'flex',gap:6,alignItems:'center',marginTop:8}},
+        React.createElement('button',{onClick:()=>{const[y,m,d]=selDay.split('-').map(Number);setSelDay(fmtD(new Date(y,m-1,d-1)));},style:{padding:'6px 10px',flexShrink:0}},
+          React.createElement('i',{className:'ti ti-chevron-left'})
+        ),
+        React.createElement('input',{type:'date',value:selDay,max:today(),onChange:e=>setSelDay(e.target.value),style:{flex:1,textAlign:'center'}}),
+        React.createElement('button',{onClick:()=>{const[y,m,d]=selDay.split('-').map(Number);const nd=fmtD(new Date(y,m-1,d+1));if(nd<=today())setSelDay(nd);},disabled:selDay>=today(),style:{padding:'6px 10px',flexShrink:0}},
+          React.createElement('i',{className:'ti ti-chevron-right'})
+        )
+      ),
+      period==='weekly'&&React.createElement('div',{style:{display:'flex',gap:6,alignItems:'center',marginTop:8}},
+        React.createElement('button',{onClick:()=>setWeekOffset(o=>o-1),style:{padding:'6px 10px',flexShrink:0}},
+          React.createElement('i',{className:'ti ti-chevron-left'})
+        ),
+        React.createElement('div',{style:{flex:1,textAlign:'center',fontSize:13,fontWeight:600,color:'var(--text1)'}},
+          `${weekRange.start} 〜 ${weekRange.end}`,
+          weekOffset===0&&React.createElement('span',{style:{fontSize:11,color:'var(--text3)',marginLeft:6}},'(直近7日)')
+        ),
+        React.createElement('button',{onClick:()=>setWeekOffset(o=>o+1),disabled:weekOffset>=0,style:{padding:'6px 10px',flexShrink:0}},
+          React.createElement('i',{className:'ti ti-chevron-right'})
+        )
+      ),
+      (period==='custom'||period==='ld'||period==='seat')&&React.createElement('div',{style:{display:'flex',gap:6,alignItems:'center',marginTop:8}},
+        React.createElement('input',{type:'date',value:rs,onChange:e=>setRs(e.target.value),style:{flex:1},placeholder:'開始日'}),
+        React.createElement('span',{style:{color:'var(--text3)'}},'〜'),
+        React.createElement('input',{type:'date',value:re,onChange:e=>setRe(e.target.value),style:{flex:1},placeholder:'終了日'}),
+        (rs||re)&&React.createElement('button',{onClick:()=>{setRs('');setRe('');},style:{padding:'6px 8px',fontSize:11,color:'var(--text2)',flexShrink:0}},'直近7日')
+      )
+    ),
+    /* 日次：データなし */
+    period==='daily'&&!filtered.length&&React.createElement('div',{className:'empty',style:{marginBottom:10}},
+      React.createElement('i',{className:'ti ti-calendar-off'}),`${selDay} のデータがありません`,
+      React.createElement('div',{style:{fontSize:12,marginTop:4}},'過去入力タブからZレポートを登録してください')
+    ),
+    /* 通常サマリー KPI（席別タブでは非表示） */
+    !isLD&&!isSeat&&summary&&React.createElement('div',{className:'card',style:{marginBottom:10}},
+      React.createElement('div',{style:{fontSize:11,color:'var(--text2)',marginBottom:10}},
+        period==='daily'
+          ?weekLabel(selDay)
+          :period!=='dow'&&`集計期間: ${filtered[0]?.date} 〜 ${filtered[filtered.length-1]?.date}（${summary.days}日間）`
+      ),
+      (()=>{
+        const dpcPct=goal?Math.round(summary.drinkPerCover/goal*100):null;
+        const dpcDiff=goal?Math.round(summary.drinkPerCover-goal):null;
+        const dpcSubColor=dpcPct>=100?'var(--green)':dpcPct>=80?'var(--amber)':'#ef4444';
+        const perHead=summary.totalCovers>0?Math.round(summary.totalSales/summary.totalCovers):0;
+        const mkCard=({l,v,c,sub})=>React.createElement('div',{key:l,className:'metric-card'},
+          React.createElement('div',{className:'metric-val',style:c?{color:c}:{}},v),
+          React.createElement('div',{className:'metric-lbl'},l),
+          sub||null
+        );
+        const row1=[
+          {l:'総売上（税抜）',v:`¥${fmt(summary.totalSales)}`},
+          {l:'総客数',v:`${fmt(summary.totalCovers,0)}名`},
+          {l:'客単価（税抜）',v:`¥${fmt(perHead,0)}`},
+        ];
+        const row2=[
+          {l:'ドリンク売上（税抜）',v:`¥${fmt(summary.totalDrink)}`,c:'var(--blue)'},
+          {l:'1人D売上（税抜）',v:`¥${fmt(summary.drinkPerCover,0)}`,c:'var(--blue)',sub:goal?React.createElement('div',{className:'metric-sub',style:{color:dpcSubColor}},`目標比 ${dpcPct}%`,dpcDiff>=0?` (▲¥${fmt(dpcDiff)})`:` (▼¥${fmt(-dpcDiff)})`):null},
+          {l:'DR比率',v:`${fmt(summary.drinkRatio*100,1)}%`,c:summary.drinkRatio>=0.3?'var(--green)':'var(--amber)'},
+          {l:'日平均DR売上',v:`¥${fmt(summary.avgDaily,0)}`},
+          ...(summary.avgDrinkPrice!==null?[{l:'平均D単価（税抜）',v:`¥${fmt(summary.avgDrinkPrice,0)}`,c:'var(--blue)'}]:[]),
+        ];
+        return React.createElement('div',null,
+          React.createElement('div',{className:'grid3',style:{marginBottom:8}},row1.map(mkCard)),
+          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:8}},row2.map(mkCard))
+        );
+      })(),
+      summary.drinksPerCover!==null&&React.createElement('div',{style:{marginTop:8}},
+        React.createElement('div',{className:'metric-card',style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px'}},
+          React.createElement('span',{style:{fontSize:12,color:'var(--text2)'}},'1人D杯数（テーブルデータより）'),
+          React.createElement('span',{style:{fontSize:16,fontWeight:700,color:'var(--blue)'}},`${fmt(summary.drinksPerCover,1)}杯`)
+        )
+      ),
+      ldFiltered&&(()=>{
+        const{lunch:lf,dinner:df,source}=ldFiltered;
+        const totalCovers=(lf.covers||0)+(df.covers||0);
+        const lPct=totalCovers>0?Math.round(lf.covers/totalCovers*100):0;
+        const dPct=totalCovers>0?100-lPct:0;
+        const mkLD=(label,d,color)=>React.createElement('div',{style:{flex:1,background:'var(--surface2)',borderRadius:8,padding:'10px 12px'}},
+          React.createElement('div',{style:{fontSize:11,fontWeight:700,color,marginBottom:6}},label),
+          React.createElement('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:2}},`客数: ${d.covers||0}名`),
+          d.drinkSales>0&&React.createElement('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:2}},`D売上: ¥${fmt(net(d.drinkSales))}`),
+          d.drinkPerCover>0&&React.createElement('div',{style:{fontSize:14,fontWeight:700,color}},`1人D: ¥${fmt(net(d.drinkPerCover),0)}`),
+          source==='table'&&d.dc>0&&React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginTop:2}},`${d.dc}杯`)
+        );
+        return React.createElement('div',{style:{marginTop:8}},
+          React.createElement('div',{className:'metric-card',style:{padding:'10px 14px'}},
+            React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}},
+              React.createElement('div',{style:{fontSize:12,color:'var(--text2)'}},'ランチ / ディナー内訳'),
+              React.createElement('div',{style:{fontSize:10,color:'var(--text3)'}},source==='table'?'テーブルデータより':'Zレポートより')
+            ),
+            React.createElement('div',{style:{display:'flex',gap:8,marginBottom:8}},
+              mkLD('🌞 ランチ',lf,'var(--amber)'),
+              mkLD('🌙 ディナー',df,'var(--blue)')
+            ),
+            totalCovers>0&&React.createElement('div',null,
+              React.createElement('div',{style:{display:'flex',height:6,borderRadius:3,overflow:'hidden',background:'var(--surface2)',marginBottom:4}},
+                React.createElement('div',{style:{width:`${lPct}%`,background:'var(--amber)',transition:'width .3s'}}),
+                React.createElement('div',{style:{flex:1,background:'var(--blue)'}})
+              ),
+              React.createElement('div',{style:{display:'flex',justifyContent:'space-between',fontSize:10,color:'var(--text3)'}},
+                React.createElement('span',null,`ランチ ${lPct}%`),
+                React.createElement('span',null,`ディナー ${dPct}%`)
+              )
+            )
+          )
+        );
+      })()
+    ),
+    /* L/D別ビュー */
+    isLD&&React.createElement('div',{style:{marginBottom:10}},
+      React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginBottom:8,textAlign:'center'}},
+        `集計期間: ${ldSeatRange.start} 〜 ${ldSeatRange.end}（テーブルレシートより）`
+      ),
+      ldData
+        ?React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}},
+            React.createElement(LDCard,{session:ldData.lunch,label:'ランチ (〜16:59)',color:'var(--amber)',icon:'sun'}),
+            React.createElement(LDCard,{session:ldData.dinner,label:'ディナー (17:00〜)',color:'var(--blue)',icon:'moon'})
+          )
+        :React.createElement('div',{className:'empty'},
+            React.createElement('i',{className:'ti ti-receipt-off'}),'この期間のテーブルレシートがありません',
+            React.createElement('div',{style:{fontSize:12,marginTop:4}},'上の日付範囲を変更するか、テーブルレシートを登録してください')
+          )
+    ),
+    /* 席別ビュー */
+    isSeat&&React.createElement('div',{style:{marginBottom:10}},
+      React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginBottom:8,textAlign:'center'}},
+        `集計期間: ${ldSeatRange.start} 〜 ${ldSeatRange.end}`
+      ),
+      seatData
+        ?(()=>{
+            /* DR比率最大値（バー表示の基準） */
+            const maxDR=Math.max(...seatData.map(s=>s.drinkRatio||0),0.01);
+            const maxDPC=Math.max(...seatData.map(s=>s.drinkPerCover||0),1);
+            const rankColors=['#f59e0b','#94a3b8','#b45309'];/* 金・銀・銅 */
+            const drColor=r=>r>=0.4?'var(--green)':r>=0.25?'var(--amber)':'#ef4444';
+            return React.createElement('div',null,
+              /* ─── カードグリッド ─── */
+              React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(155px,1fr))',gap:10,marginBottom:12}},
+                seatData.map((s,idx)=>{
+                  const isOpen=expandedSeat===s.seat;
+                  const dr=s.drinkRatio||0;
+                  const drPct=Math.round(dr*100);
+                  const barW=Math.round(dr/maxDR*100);
+                  const dpcBarW=Math.round((s.drinkPerCover||0)/maxDPC*100);
+                  const medal=idx<3?rankColors[idx]:null;
+                  return React.createElement('div',{key:s.seat,
+                    onClick:()=>setExpandedSeat(isOpen?null:s.seat),
+                    style:{background:'var(--surface)',border:`1.5px solid ${isOpen?'var(--blue)':'var(--border)'}`,borderRadius:10,padding:'12px 14px',cursor:'pointer',userSelect:'none',position:'relative',transition:'border-color .15s'}
+                  },
+                    /* 席名 + ランキングバッジ */
+                    React.createElement('div',{style:{display:'flex',alignItems:'center',gap:6,marginBottom:10}},
+                      medal&&React.createElement('div',{style:{flexShrink:0,width:18,height:18,borderRadius:9,background:medal,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,color:'#fff'}},idx+1),
+                      React.createElement('i',{className:'ti ti-armchair',style:{fontSize:14,color:'var(--text3)',flexShrink:0}}),
+                      React.createElement('span',{style:{fontSize:14,fontWeight:700}},s.seat),
+                      React.createElement('span',{style:{fontSize:10,color:'var(--text3)',marginLeft:'auto'}},`${s.tableCount}組/${s.covers}名`)
+                    ),
+                    /* 1人D売上（大きく） */
+                    React.createElement('div',{style:{marginBottom:2}},
+                      React.createElement('div',{style:{fontSize:9,color:'var(--text3)',marginBottom:1}},'1人D売上'),
+                      React.createElement('div',{style:{fontSize:20,fontWeight:800,color:'var(--blue)',lineHeight:1}},`¥${fmt(net(s.drinkPerCover),0)}`)
+                    ),
+                    /* 1人D売上バー */
+                    React.createElement('div',{style:{height:4,background:'var(--surface2)',borderRadius:2,marginBottom:10,overflow:'hidden'}},
+                      React.createElement('div',{style:{width:`${dpcBarW}%`,height:'100%',background:'var(--blue)',borderRadius:2}})
+                    ),
+                    /* DR比率 */
+                    React.createElement('div',{style:{marginBottom:4}},
+                      React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:3}},
+                        React.createElement('span',{style:{fontSize:9,color:'var(--text3)'}},'DR比率'),
+                        React.createElement('span',{style:{fontSize:13,fontWeight:700,color:drColor(dr)}},`${drPct}%`)
+                      ),
+                      React.createElement('div',{style:{height:6,background:'var(--surface2)',borderRadius:3,overflow:'hidden'}},
+                        React.createElement('div',{style:{width:`${barW}%`,height:'100%',background:drColor(dr),borderRadius:3,transition:'width .4s'}})
+                      )
+                    ),
+                    /* 杯数/人 */
+                    s.drinksPerCover!==null&&s.drinksPerCover>0&&React.createElement('div',{style:{fontSize:10,color:'var(--text2)',marginTop:6}},
+                      `${fmt(s.drinksPerCover,1)}杯/人`
+                    ),
+                    /* 展開ヒント */
+                    React.createElement('div',{style:{fontSize:9,color:'var(--text3)',marginTop:6,textAlign:'right'}},
+                      isOpen?'▲ 閉じる':'▼ 詳細'
+                    )
+                  );
+                })
+              ),
+              /* ─── 展開：詳細テーブル ─── */
+              (()=>{
+                const s=seatData.find(s=>s.seat===expandedSeat);
+                if(!s)return null;
+                return React.createElement('div',{className:'card',style:{marginBottom:8,border:'1.5px solid var(--blue)'}},
+                  React.createElement('div',{style:{fontSize:12,fontWeight:700,marginBottom:8,color:'var(--blue)'}},
+                    React.createElement('i',{className:'ti ti-armchair',style:{marginRight:5}}),s.seat,' の来店履歴'
+                  ),
+                  React.createElement('div',{className:'scroll-x'},
+                    React.createElement('table',null,
+                      React.createElement('thead',null,React.createElement('tr',null,
+                        ['日付','時間','人数','コース','D売上','合計','1人D','杯数','DR%',''].map(h=>React.createElement('th',{key:h},h))
+                      )),
+                      React.createElement('tbody',null,
+                        s.records.map((t,i)=>{
+                          const tDC=(t.drinks||[]).length>0?(t.drinks||[]).reduce((ss,d)=>ss+(d.qty||0),0):(t.drinkCount||0);
+                          const hasWarn=!t.covers||(!t.drinkTotal&&t.total>0);
+                          return React.createElement('tr',{key:t.id||i,style:hasWarn?{background:'#fff7ed'}:{}},
+                            React.createElement('td',null,weekLabel(t.date)),
+                            React.createElement('td',null,t.time||'-'),
+                            React.createElement('td',{style:!t.covers?{color:'var(--red)',fontWeight:700}:{}},t.covers?`${t.covers}名`:'⚠ 0名'),
+                            React.createElement('td',null,t.course||'-'),
+                            React.createElement('td',{style:{color:'var(--blue)',fontWeight:600}},`¥${fmt(net(t.drinkTotal))}`),
+                            React.createElement('td',null,`¥${fmt(net(t.total))}`),
+                            React.createElement('td',{style:{color:'var(--blue)',fontWeight:700}},`¥${fmt(net(t.drinkPerCover),0)}`),
+                            React.createElement('td',null,tDC>0?`${tDC}杯`:'-'),
+                            React.createElement('td',null,
+                              t.total>0?React.createElement('span',{style:{color:drColor(t.drinkTotal/t.total),fontWeight:600}},`${fmt(t.drinkTotal/t.total*100,1)}%`):'-'
+                            ),
+                            React.createElement('td',null,
+                              React.createElement('button',{
+                                onClick:e=>{e.stopPropagation();if(confirm(`このレコードを削除しますか？\n${t.date} ${t.seat} ${t.covers}名`))setData(prev=>({...prev,tables:(prev.tables||[]).filter(r=>r.id!==t.id)}));},
+                                style:{padding:'2px 8px',fontSize:11,background:'#fee2e2',color:'var(--red)',border:'none',borderRadius:4,cursor:'pointer',whiteSpace:'nowrap'}
+                              },'削除')
+                            )
+                          );
+                        })
+                      )
+                    )
+                  )
+                );
+              })()
+            );
+          })()
+        :React.createElement('div',{className:'card',style:{textAlign:'center',padding:'20px 16px',color:'var(--text2)'}},
+            React.createElement('i',{className:'ti ti-armchair',style:{fontSize:28,display:'block',marginBottom:8,color:'var(--text3)'}}),
+            '席が割り当て済みのデータがまだありません'
+          ),
+      /* 未設定テーブル一覧 */
+      (()=>{
+        const masterSeats=loadMaster().seats||[];
+        const unassigned=(data.tables||[]).filter(t=>!t.seat).sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
+        if(!unassigned.length||!masterSeats.length)return null;
+        const assignSeat=(tableId,seat)=>{
+          setData(prev=>({...prev,tables:(prev.tables||[]).map(t=>t.id===tableId?{...t,seat}:t)}));
+        };
+        const assignAll=(seat)=>{
+          if(!seat)return;
+          setData(prev=>({...prev,tables:(prev.tables||[]).map(t=>!t.seat?{...t,seat}:t)}));
+        };
+        const dedup=()=>{
+          if(!window.confirm('重複しているテーブルデータを削除しますか？\n（日付・人数・コース・ドリンク合計が同じものを1件に統合します）'))return;
+          setData(prev=>{
+            const seen=new Set();
+            const deduped=(prev.tables||[]).filter(t=>{
+              const key=`${t.date}|${t.covers}|${t.course||''}|${t.drinkTotal}|${t.total}`;
+              if(seen.has(key))return false;
+              seen.add(key);return true;
+            });
+            return{...prev,tables:deduped};
+          });
+        };
+        return React.createElement('div',{className:'card',style:{marginTop:10}},
+          React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:8}},
+            React.createElement('div',{style:{fontSize:13,fontWeight:600,display:'flex',alignItems:'center',gap:5}},
+              React.createElement('i',{className:'ti ti-alert-triangle',style:{color:'var(--amber)'}}),
+              `席未設定のテーブル（${unassigned.length}件）`
+            ),
+            React.createElement('button',{onClick:dedup,style:{fontSize:11,padding:'4px 10px',color:'var(--red)',borderColor:'#fca5a5',background:'#fee2e2',cursor:'pointer',borderRadius:'var(--r)'}},
+              React.createElement('i',{className:'ti ti-copy-off',style:{marginRight:4}}),'重複削除'
+            )
+          ),
+          /* 一括席設定 */
+          React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center',marginBottom:10,padding:'8px 10px',background:'#f0fdf4',borderRadius:'var(--r)',border:'0.5px solid #86efac',flexWrap:'wrap'}},
+            React.createElement('span',{style:{fontSize:12,fontWeight:600,color:'var(--green)',flexShrink:0}},'一括設定:'),
+            React.createElement('select',{id:'bulkSeatSel',style:{fontSize:12,padding:'4px 8px',flex:1,minWidth:100},defaultValue:''},
+              React.createElement('option',{value:''},'-- 席を選択 --'),
+              masterSeats.map(s=>React.createElement('option',{key:s,value:s},s))
+            ),
+            React.createElement('button',{
+              onClick:()=>{const s=document.getElementById('bulkSeatSel').value;if(s)assignAll(s);else alert('席を選んでください');},
+              style:{fontSize:12,padding:'4px 10px',background:'var(--green)',color:'#fff',border:'none',borderRadius:'var(--r)',cursor:'pointer',flexShrink:0}},
+              '未設定全件に適用'
+            )
+          ),
+          React.createElement('div',{className:'scroll-x'},
+            React.createElement('table',null,
+              React.createElement('thead',null,React.createElement('tr',null,
+                ['日付','人数','コース','1人D(税抜)','席を割り当て'].map(h=>React.createElement('th',{key:h},h))
+              )),
+              React.createElement('tbody',null,
+                unassigned.map(t=>React.createElement('tr',{key:t.id},
+                  React.createElement('td',null,weekLabel(t.date)),
+                  React.createElement('td',null,`${t.covers}名`),
+                  React.createElement('td',null,t.course||'-'),
+                  React.createElement('td',{style:{color:'var(--blue)',fontWeight:600}},`¥${fmt(net(t.drinkPerCover),0)}`),
+                  React.createElement('td',null,
+                    React.createElement('select',{
+                      defaultValue:'',
+                      onChange:e=>e.target.value&&assignSeat(t.id,e.target.value),
+                      style:{fontSize:12,padding:'3px 6px',width:'auto'}
+                    },
+                      React.createElement('option',{value:''},'-- 選択 --'),
+                      masterSeats.map(s=>React.createElement('option',{key:s,value:s},s))
+                    )
+                  )
+                ))
+              )
+            )
+          )
+        );
+      })()
+    ),
+    /* チャート */
+    !isSeat&&React.createElement('div',{className:'card',style:{marginBottom:10}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:12}},
+        React.createElement('i',{className:'ti ti-chart-bar',style:{marginRight:5}}),
+        period==='dow'?'曜日別 1人D売上':isLD?'ランチ/ディナー 1人D売上':'1人D売上推移'
+      ),
+      React.createElement(BarChart,{data:chartData,valueKey:'value',labelKey:'name',color:'#3b6bde',height:170,goalValue:goal||0})
+    ),
+    /* 日別一覧（曜日別・L/D別以外） */
+    !isLD&&!isSeat&&period!=='dow'&&filtered.length>0&&React.createElement('div',{className:'card'},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:10}},
+        React.createElement('i',{className:'ti ti-list',style:{marginRight:5}}),'日別一覧'
+      ),
+      React.createElement('div',{className:'scroll-x'},
+        React.createElement('table',null,
+          React.createElement('thead',null,React.createElement('tr',null,
+            ['日付','客数','総売上','ドリンク売上','1人D売上','DR比率','D杯数'].map(h=>React.createElement('th',{key:h},h))
+          )),
+          React.createElement('tbody',null,
+            [...filtered].reverse().map(d=>{
+              const dc=getDrinkCount(d.date);
+              return React.createElement('tr',{key:d.date,style:d.tableOnly?{background:'#fefce8'}:{}},
+                React.createElement('td',null,
+                  React.createElement('span',null,weekLabel(d.date)),
+                  d.tableOnly&&React.createElement('span',{style:{marginLeft:4,fontSize:9,padding:'1px 4px',background:'#fde68a',color:'#92400e',borderRadius:3,fontWeight:600}},'レシートのみ')
+                ),
+                React.createElement('td',null,`${d.totalCovers}名`),
+                React.createElement('td',null,d.tableOnly?React.createElement('span',{style:{color:'var(--text3)',fontSize:11}},'レシート合計'):null,`¥${fmt(net(d.totalSales))}`),
+                React.createElement('td',{style:{color:'var(--blue)',fontWeight:600}},`¥${fmt(net(d.drinkSales))}`),
+                React.createElement('td',{style:{color:'var(--blue)',fontWeight:700}},`¥${fmt(net(d.drinkPerCover),0)}`),
+                React.createElement('td',null,React.createElement('span',{style:{color:(d.drinkRatio||0)>=0.3?'var(--green)':'var(--amber)',fontWeight:600}},`${fmt((d.drinkRatio||0)*100,1)}%`)),
+                React.createElement('td',null,dc!==null?`${dc}杯`:'-')
+              );
+            })
+          )
+        )
+      )
+    )
+  );
+}
+
+/* ── Master Settings ── */
+function MasterSettings({apiKey,config,setConfig}){
+  const [master,setMasterState]=useState(loadMaster);
+  const [candidates,setCandidates]=useState([]);   // AI分類用 [{name,isDrink}]
+  const [structured,setStructured]=useState(null); // 構造化CSV用 {drinks,totalQty,totalAmt}
+  const [phase,setPhase]=useState('list'); // 'list'|'loading'|'confirm'|'confirm-structured'
+  const [err,setErr]=useState('');
+  const [newName,setNewName]=useState('');
+  const [newSeat,setNewSeat]=useState('');
+  const [fileName,setFileName]=useState('');
+
+  const persist=m=>{saveMaster(m);setMasterState(m)};
+  const removeDrink=name=>persist({...master,drinks:master.drinks.filter(d=>d!==name)});
+  const removeExclude=name=>persist({...master,excludes:(master.excludes||[]).filter(d=>d!==name)});
+  const addManual=()=>{
+    const n=newName.trim();
+    if(!n||master.drinks.includes(n))return;
+    persist({...master,drinks:[...master.drinks,n]});
+    setNewName('');
+  };
+
+  /* ── 構造化CSV（カテゴリ1列あり）パース ── */
+  const parseStructuredCSV=text=>{
+    const sep=text.includes('\t')?'\t':',';
+    const rows=text.trim().split(/\r?\n/).map(l=>l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim()));
+    const hdr=rows[0];
+    const nameIdx=hdr.findIndex(h=>h==='商品名');
+    const cat1Idx=hdr.findIndex(h=>h==='カテゴリ1');
+    const cat2Idx=hdr.findIndex(h=>h==='カテゴリ2');
+    const qtyIdx =hdr.findIndex(h=>h==='売上数量');
+    const amtIdx =hdr.findIndex(h=>h==='売上金額');
+    if(cat1Idx<0||nameIdx<0)return null;
+    const pn=s=>parseInt((s||'').replace(/[¥,\s]/g,'')||'0')||0;
+    const drinks=rows.slice(1)
+      .filter(r=>r[cat1Idx]==='ドリンク'&&r[nameIdx])
+      .map(r=>({name:r[nameIdx],cat2:cat2Idx>=0?r[cat2Idx]:'',qty:qtyIdx>=0?pn(r[qtyIdx]):0,amt:amtIdx>=0?pn(r[amtIdx]):0}));
+    const excludes=[...new Set(rows.slice(1)
+      .filter(r=>r[nameIdx]&&(r[cat1Idx]==='コース'||r[cat1Idx]==='フード'))
+      .map(r=>r[nameIdx]))];
+    return{drinks,excludes,totalQty:drinks.reduce((s,d)=>s+d.qty,0),totalAmt:drinks.reduce((s,d)=>s+d.amt,0)};
+  };
+
+  /* ── 非構造化CSV → 品名抽出（AI分類用） ── */
+  const parseNames=text=>{
+    const sep=text.includes('\t')?'\t':',';
+    const lines=text.split(/\r?\n/).filter(l=>l.trim());
+    if(!lines.length)return[];
+    const rows=lines.map(l=>l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim()));
+    const hdr=rows[0];
+    let col=hdr.findIndex(h=>/商品名|品名|name/i.test(h));
+    if(col<0){const sc=hdr.map((_,i)=>rows.slice(1).filter(r=>r[i]&&isNaN(r[i])&&r[i].length>1).length);col=sc.indexOf(Math.max(...sc));}
+    return[...new Set(rows.slice(1).map(r=>r[col]).filter(v=>v&&v.length>1))];
+  };
+
+  const handleFile=async f=>{
+    setErr('');setFileName(f.name||'');setPhase('loading');
+    try{
+      if(f.name.toLowerCase().endsWith('.csv')||f.type==='text/csv'||f.type==='text/plain'){
+        // BOM検出でエンコーディング判定
+        const ab=await f.arrayBuffer();
+        const bom=new Uint8Array(ab.slice(0,2));
+        const enc=(bom[0]===0xFF&&bom[1]===0xFE)||(bom[0]===0xFE&&bom[1]===0xFF)?'utf-16':'utf-8';
+        const text=new TextDecoder(enc).decode(ab);
+        // 構造化CSV（カテゴリ1列あり）→ AIなしで自動判定
+        const result=parseStructuredCSV(text);
+        if(result&&result.drinks.length){setStructured(result);setPhase('confirm-structured');return;}
+        // 非構造化 → AI分類
+        const names=parseNames(text);
+        if(!names.length)throw new Error('商品名の列が見つかりませんでした');
+        if(!apiKey)throw new Error('APIキーを設定してください');
+        const res=await callVision(apiKey,null,null,
+`以下はレストランの商品名リストです。各商品がドリンク（飲み物）かフード（料理・コース）かを判定してください。JSONのみで返答：
+{"items":[{"name":"商品名","isDrink":true},{"name":"料理名","isDrink":false}]}
+商品リスト：\n${names.join('\n')}`
+        );
+        const parsed=JSON.parse(res.replace(/```json|```/g,'').trim());
+        setCandidates(parsed.items||[]);setPhase('confirm');
+      } else if(f.type==='application/pdf'){
+        const b64=await toB64(f);
+        const res=await callVision(apiKey,b64,'application/pdf',
+`この商品マスター・価格表PDFから全商品名を抽出し、各商品がドリンク（飲み物）かフード（料理・コース）かを判定してください。JSONのみで返答：
+{"items":[{"name":"商品名","isDrink":true},{"name":"料理名","isDrink":false}]}
+ドリンク＝アルコール・ソフトドリンク・お茶・水など飲み物全般。フード＝料理・コース・食事。`
+        );
+        const parsed=JSON.parse(res.replace(/```json|```/g,'').trim());
+        setCandidates(parsed.items||[]);setPhase('confirm');
+      }
+    }catch(e){setErr(e.message);setPhase('list');}
+  };
+
+  const toggleCandidate=name=>setCandidates(prev=>prev.map(c=>c.name===name?{...c,isDrink:!c.isDrink}:c));
+  const confirmCandidates=()=>{
+    const newDrinks=[...new Set([...master.drinks,...candidates.filter(c=>c.isDrink).map(c=>c.name)])];
+    const newExcludes=[...new Set([...master.excludes,...candidates.filter(c=>!c.isDrink).map(c=>c.name)])];
+    persist({...master,drinks:newDrinks,excludes:newExcludes});setCandidates([]);setPhase('list');setFileName('');
+  };
+  const confirmStructured=()=>{
+    const newDrinks=[...new Set([...master.drinks,...structured.drinks.map(d=>d.name)])];
+    const newExcludes=[...new Set([...master.excludes,...(structured.excludes||[])])];
+    persist({...master,drinks:newDrinks,excludes:newExcludes});setStructured(null);setPhase('list');setFileName('');
+  };
+
+  /* ── 構造化CSV確認画面 ── */
+  if(phase==='confirm-structured'&&structured){
+    const byCat2={};
+    structured.drinks.forEach(d=>{
+      if(!byCat2[d.cat2])byCat2[d.cat2]={count:0,qty:0,amt:0};
+      byCat2[d.cat2].count++;byCat2[d.cat2].qty+=d.qty;byCat2[d.cat2].amt+=d.amt;
+    });
+    return React.createElement('div',null,
+      React.createElement('div',{className:'card'},
+        React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:2,color:'var(--green)',display:'flex',alignItems:'center',gap:5}},
+          React.createElement('i',{className:'ti ti-check-circle'}),'カテゴリ列から自動判定しました（AI不要）'
+        ),
+        React.createElement('div',{style:{fontSize:11,color:'var(--text2)',marginBottom:12}},fileName),
+        React.createElement('table',null,
+          React.createElement('thead',null,React.createElement('tr',null,
+            ['カテゴリ','品数','杯数','売上金額'].map(h=>React.createElement('th',{key:h},h))
+          )),
+          React.createElement('tbody',null,
+            Object.entries(byCat2).map(([cat,v])=>React.createElement('tr',{key:cat},
+              React.createElement('td',null,cat||'（未分類）'),
+              React.createElement('td',null,`${v.count}品`),
+              React.createElement('td',null,v.qty>0?`${v.qty.toLocaleString()}杯`:'-'),
+              React.createElement('td',null,v.amt>0?`¥${v.amt.toLocaleString()}`:'-')
+            ))
+          )
+        ),
+        React.createElement('div',{style:{marginTop:10,padding:'10px 12px',background:'var(--surface2)',borderRadius:'var(--r)',fontSize:12,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}},
+          React.createElement('span',{style:{fontWeight:600}},`ドリンク ${structured.drinks.length}品 / 除外（コース・フード）${(structured.excludes||[]).length}品`),
+          structured.totalQty>0&&React.createElement('span',{style:{color:'var(--blue)',fontWeight:600}},
+            `${structured.totalQty.toLocaleString()}杯 / ¥${structured.totalAmt.toLocaleString()}`)
+        ),
+        React.createElement('div',{style:{display:'flex',gap:8,marginTop:12}},
+          React.createElement('button',{onClick:()=>{setStructured(null);setPhase('list')},style:{flex:1}},'← やり直し'),
+          React.createElement('button',{onClick:confirmStructured,
+            style:{flex:2,background:'var(--blue)',color:'#fff',border:'none',fontWeight:600,justifyContent:'center',padding:'10px',borderRadius:'var(--r)',display:'flex',alignItems:'center',gap:5,cursor:'pointer'}},
+            React.createElement('i',{className:'ti ti-device-floppy'}),` ${structured.drinks.length}品をマスターに保存`)
+        )
+      )
+    );
+  }
+
+  /* ── AI分類確認画面 ── */
+  if(phase==='confirm') return React.createElement('div',null,
+    React.createElement('div',{className:'card',style:{marginBottom:10}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:4}},
+        React.createElement('i',{className:'ti ti-check-list',style:{marginRight:5}}),'AI分類結果を確認'
+      ),
+      React.createElement('div',{style:{fontSize:11,color:'var(--text2)',marginBottom:12}},`${fileName} — タップで反転できます`),
+      React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:14}},
+        candidates.map(c=>React.createElement('button',{
+          key:c.name,onClick:()=>toggleCandidate(c.name),
+          style:{padding:'5px 10px',fontSize:12,borderRadius:20,
+            background:c.isDrink?'#dbeafe':'var(--surface2)',
+            color:c.isDrink?'var(--blue)':'var(--text3)',
+            border:`1.5px solid ${c.isDrink?'var(--blue)':'var(--border2)'}`,
+            fontWeight:c.isDrink?600:400}
+        },c.isDrink?'🍺 ':'🍽 ',c.name))
+      ),
+      React.createElement('div',{style:{fontSize:11,color:'var(--text2)',marginBottom:10}},
+        `青＝ドリンク（${candidates.filter(c=>c.isDrink).length}品）　グレー＝フード（${candidates.filter(c=>!c.isDrink).length}品）`
+      ),
+      React.createElement('div',{style:{display:'flex',gap:8}},
+        React.createElement('button',{onClick:()=>{setCandidates([]);setPhase('list')},style:{flex:1}},'← やり直し'),
+        React.createElement('button',{onClick:confirmCandidates,
+          style:{flex:2,background:'var(--blue)',color:'#fff',border:'none',fontWeight:600,justifyContent:'center',padding:'10px',borderRadius:'var(--r)',display:'flex',alignItems:'center',gap:5,cursor:'pointer'}},
+          React.createElement('i',{className:'ti ti-device-floppy'}),' マスターに保存')
+      )
+    )
+  );
+
+  return React.createElement('div',null,
+    /* アップロード */
+    React.createElement('div',{className:'card',style:{marginBottom:10}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:4}},
+        React.createElement('i',{className:'ti ti-database-import',style:{marginRight:5}}),'商品マスターをインポート'
+      ),
+      React.createElement('div',{style:{fontSize:11,color:'var(--text2)',marginBottom:10}},'カテゴリ列があるPOS CSVはAI不要で自動判定。PDFはAIで判定します。'),
+      phase==='loading'
+        ?React.createElement('div',{style:{textAlign:'center',padding:20,color:'var(--text2)'}},
+            React.createElement('i',{className:'ti ti-loader spin',style:{fontSize:24}}),
+            React.createElement('div',{style:{marginTop:8,fontSize:12}},'読み込み中...')
+          )
+        :React.createElement(UploadZone,{
+            onFile:handleFile,
+            accept:'image/*,.pdf,.csv,text/csv,text/plain',
+            label:'商品マスターCSV / PDF を選択',
+            hint:'POSからエクスポートした商品一覧ファイル'
+          }),
+      err&&React.createElement('div',{style:{color:'var(--red)',fontSize:12,padding:'8px 10px',background:'#fee2e2',borderRadius:'var(--r)',marginTop:8}},err)
+    ),
+    /* 席マスター */
+    React.createElement('div',{className:'card',style:{marginBottom:10}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:4,display:'flex',alignItems:'center',gap:5}},
+        React.createElement('i',{className:'ti ti-armchair',style:{color:'var(--green)'}}),
+        '席マスター（テーブル・個室・カウンター）'
+      ),
+      React.createElement('div',{style:{fontSize:11,color:'var(--text2)',marginBottom:10}},'登録した席名はレシート解析時にAIが照合します。表示名のまま入力してください。'),
+      (()=>{
+        const seatTrimmed=newSeat.trim();
+        const isDup=seatTrimmed&&(master.seats||[]).includes(seatTrimmed);
+        const canAdd=seatTrimmed&&!isDup;
+        const doAdd=()=>{if(!canAdd)return;persist({...master,seats:[...(master.seats||[]),seatTrimmed]});setNewSeat('');};
+        return React.createElement('div',null,
+          React.createElement('div',{style:{display:'flex',gap:6,marginBottom:4}},
+            React.createElement('input',{type:'text',value:newSeat,onChange:e=>setNewSeat(e.target.value),
+              onKeyDown:e=>e.key==='Enter'&&doAdd(),
+              placeholder:'例）テーブル1、個室A、カウンター左',
+              style:{flex:1,borderColor:isDup?'var(--red)':''}
+            }),
+            React.createElement('button',{onClick:doAdd,disabled:!canAdd,
+              style:{flexShrink:0,background:'var(--green)',color:'#fff',border:'none',padding:'8px 14px',borderRadius:'var(--r)',cursor:canAdd?'pointer':'not-allowed',opacity:canAdd?1:0.4}},
+              React.createElement('i',{className:'ti ti-plus'})
+            )
+          ),
+          isDup&&React.createElement('div',{style:{fontSize:11,color:'var(--red)',marginBottom:6}},`「${seatTrimmed}」はすでに登録されています`)
+        );
+      })(),
+      (master.seats||[]).length===0
+        ?React.createElement('div',{style:{fontSize:12,color:'var(--text3)',textAlign:'center',padding:'10px 0'}},'まだ登録されていません')
+        :React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},
+            (master.seats||[]).map(s=>React.createElement('div',{key:s,
+              style:{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',background:'#f0fdf4',border:'1px solid #86efac',borderRadius:20,fontSize:12,color:'var(--green)'}},
+              React.createElement('i',{className:'ti ti-armchair'}),
+              React.createElement('span',null,s),
+              React.createElement('button',{onClick:()=>persist({...master,seats:(master.seats||[]).filter(s2=>s2!==s)}),
+                style:{padding:0,border:'none',background:'none',color:'var(--green)',cursor:'pointer',lineHeight:1,fontSize:13,display:'flex'}},
+                React.createElement('i',{className:'ti ti-x'})
+              )
+            ))
+          )
+    ),
+    /* 手動追加 */
+    React.createElement('div',{className:'card',style:{marginBottom:10}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:10}},
+        React.createElement('i',{className:'ti ti-circle-plus',style:{marginRight:5}}),'ドリンク品名を手動追加'
+      ),
+      React.createElement('div',{style:{display:'flex',gap:6}},
+        React.createElement('input',{type:'text',value:newName,onChange:e=>setNewName(e.target.value),
+          onKeyDown:e=>e.key==='Enter'&&addManual(),
+          placeholder:'例）W/ミネラルウォーター',style:{flex:1}}),
+        React.createElement('button',{onClick:addManual,disabled:!newName.trim(),
+          style:{flexShrink:0,background:'var(--blue)',color:'#fff',border:'none',padding:'8px 14px',borderRadius:'var(--r)',cursor:'pointer'}},
+          React.createElement('i',{className:'ti ti-plus'})
+        )
+      )
+    ),
+    /* 現在のリスト */
+    React.createElement('div',{className:'card',style:{marginBottom:10}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:10}},
+        React.createElement('i',{className:'ti ti-list-check',style:{marginRight:5}}),
+        `登録済みドリンク品名（${master.drinks.length}品）`
+      ),
+      master.drinks.length===0
+        ?React.createElement('div',{style:{fontSize:12,color:'var(--text3)',textAlign:'center',padding:'12px 0'}},'まだ登録されていません')
+        :React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},
+            master.drinks.map(d=>React.createElement('div',{key:d,
+              style:{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',background:'#dbeafe',border:'1px solid #93c5fd',borderRadius:20,fontSize:12,color:'var(--blue)'}},
+              React.createElement('span',null,d),
+              React.createElement('button',{onClick:()=>removeDrink(d),
+                style:{padding:0,border:'none',background:'none',color:'#3b82f6',cursor:'pointer',lineHeight:1,fontSize:13,display:'flex'}},
+                React.createElement('i',{className:'ti ti-x'})
+              )
+            ))
+          )
+    ),
+    /* 除外リスト */
+    React.createElement('div',{className:'card',style:{marginBottom:10}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:6,display:'flex',alignItems:'center',gap:6}},
+        React.createElement('i',{className:'ti ti-ban',style:{marginRight:5,color:'var(--red)'}}),
+        React.createElement('span',null,`除外リスト（コース・フード）（${(master.excludes||[]).length}品）`),
+        React.createElement('span',{style:{fontSize:11,fontWeight:400,color:'var(--text2)',marginLeft:4}},'CSVインポート時に自動登録')
+      ),
+      (master.excludes||[]).length===0
+        ?React.createElement('div',{style:{fontSize:12,color:'var(--text3)',textAlign:'center',padding:'12px 0'}},'まだ登録されていません')
+        :React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},
+            (master.excludes||[]).map(d=>React.createElement('div',{key:d,
+              style:{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:20,fontSize:12,color:'var(--red)'}},
+              React.createElement('span',null,d),
+              React.createElement('button',{onClick:()=>removeExclude(d),
+                style:{padding:0,border:'none',background:'none',color:'var(--red)',cursor:'pointer',lineHeight:1,fontSize:13,display:'flex'}},
+                React.createElement('i',{className:'ti ti-x'})
+              )
+            ))
+          )
+    ),
+    /* 税・サービス設定 */
+    React.createElement('div',{className:'card'},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:4,display:'flex',alignItems:'center',gap:5}},
+        React.createElement('i',{className:'ti ti-receipt-tax',style:{color:'var(--text2)'}}),
+        '税・サービス料設定'
+      ),
+      React.createElement('div',{style:{fontSize:11,color:'var(--text2)',marginBottom:12}},
+        '設定した税率・サービス料率はレポートのすべての金額表示に自動で適用されます（税抜・サービス料抜きで表示）'
+      ),
+      React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}},
+        React.createElement('div',null,
+          React.createElement('label',{style:{fontSize:11,color:'var(--text2)',display:'block',marginBottom:4}},'消費税率 (%)'),
+          React.createElement('input',{type:'number',min:0,max:50,step:1,
+            value:(config&&config.taxRate)??10,
+            onChange:e=>setConfig({...(config||{}),taxRate:parseFloat(e.target.value)||0})
+          })
+        ),
+        React.createElement('div',null,
+          React.createElement('label',{style:{fontSize:11,color:'var(--text2)',display:'block',marginBottom:4}},'サービス料率 (%)'),
+          React.createElement('input',{type:'number',min:0,max:50,step:1,
+            value:(config&&config.serviceRate)??10,
+            onChange:e=>setConfig({...(config||{}),serviceRate:parseFloat(e.target.value)||0})
+          })
+        )
+      ),
+      React.createElement('div',{style:{marginTop:10,fontSize:11,color:'var(--text3)',textAlign:'right'}},
+        `換算係数: ×${(1/((1+((config&&config.taxRate)||0)/100)*(1+((config&&config.serviceRate)||0)/100))).toFixed(4)}`
+      )
+    )
+  );
+}
+
+/* ── Past Entry ── */
+function PastEntry({apiKey,data,setData}){
+  const fmtD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const prevDay=d=>{const[y,m,day]=d.split('-').map(Number);return fmtD(new Date(y,m-1,day-1))};
+  const nextDay=d=>{const[y,m,day]=d.split('-').map(Number);return fmtD(new Date(y,m-1,day+1))};
+  const initDate=()=>{const dt=new Date();dt.setDate(dt.getDate()-1);return dt.toISOString().slice(0,10)};
+
+  const emptyMv=()=>({totalSales:'',totalCovers:'',drinkSales:'',drinkCount:'',lunchCovers:'',dinnerCovers:'',lunchDrinkSales:'',dinnerDrinkSales:'',notes:''});
+
+  const [selDate,setSelDate]=useState(initDate);
+  const [mv,setMv]=useState(emptyMv);
+  const [saved,setSaved]=useState(false);
+  const [saveMode,setSaveMode]=useState('overwrite');
+  const [showAI,setShowAI]=useState(false);
+  const [img,setImg]=useState(null);
+  const [imgB64,setImgB64]=useState(null);
+  const [mime,setMime]=useState('image/jpeg');
+  const [fileName,setFileName]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [result,setResult]=useState(null);
+  const [err,setErr]=useState('');
+
+  const existing=(data.days||[]).find(d=>d.date===selDate);
+
+  const changeDate=d=>{
+    const ex=(data.days||[]).find(r=>r.date===d);
+    setSelDate(d);setSaved(false);setImg(null);setImgB64(null);
+    setResult(null);setErr('');setFileName('');setShowAI(false);
+    setMv(ex?{
+      totalSales:ex.totalSales||'',totalCovers:ex.totalCovers||'',drinkSales:ex.drinkSales||'',
+      drinkCount:ex.drinkCount||'',lunchCovers:ex.lunchCovers||'',dinnerCovers:ex.dinnerCovers||'',
+      lunchDrinkSales:ex.lunchDrinkSales||'',dinnerDrinkSales:ex.dinnerDrinkSales||'',notes:ex.notes||''
+    }:emptyMv());
+    setSaveMode('overwrite');
+  };
+
+  /* 日付変更時に既存データをフォームに反映 */
+  const loadExisting=()=>{
+    if(!existing)return;
+    setMv({
+      totalSales:existing.totalSales||'',totalCovers:existing.totalCovers||'',drinkSales:existing.drinkSales||'',
+      drinkCount:existing.drinkCount||'',lunchCovers:existing.lunchCovers||'',dinnerCovers:existing.dinnerCovers||'',
+      lunchDrinkSales:existing.lunchDrinkSales||'',dinnerDrinkSales:existing.dinnerDrinkSales||'',notes:existing.notes||''
+    });
+  };
+
+  const handleFile=async f=>{
+    setErr('');setResult(null);setFileName(f.name||'');
+    setImg(f.type==='application/pdf'?'__pdf__':URL.createObjectURL(f));
+    try{const{b64,mime:m}=await compressImage(f);setImgB64(b64);setMime(m);}
+    catch(e){setErr('ファイル読み込みエラー: '+e.message);}
+  };
+
+  const analyze=async()=>{
+    if(!imgB64||!apiKey)return;
+    setLoading(true);setErr('');
+    try{
+      const text=await callVision(apiKey,imgB64,mime,
+`これは飲食店の日次締め（Z）レポートまたは伝票ジャーナルです。JSONのみで返答（説明文不要）：
+{"totalSales":総売上数値,"totalCovers":総客数数値,"drinkSales":ドリンク売上数値,"drinkCount":ドリンク総杯数数値,"foodSales":フード売上数値,"tableCount":組数数値,"lunchCovers":ランチ客数数値,"dinnerCovers":ディナー客数数値,"lunchDrinkSales":ランチドリンク売上数値,"dinnerDrinkSales":ディナードリンク売上数値,"notes":"特記事項（なければ空文字）","tables":[{"time":"HH:MM","seat":"席名","covers":人数数値,"course":"コース名","drinkTotal":ドリンク合計数値,"foodTotal":フード合計数値,"total":合計数値,"drinks":[{"name":"品名","qty":数量数値,"unitPrice":単価数値,"subtotal":小計数値}]}]}
+伝票ジャーナル・明細表など個別テーブルの記録がある場合はtablesに各テーブルを抽出。drinksはアルコール・ソフトドリンク品目のみ（料理・コース料金は含めない）。timeは退店時間（HH:MM）。seatはテーブル番号・席名（例：T8、RURI）。ない場合はtables:[]。drinkCountはドリンク品目の数量合計。不明な値は0。`
+      );
+      setResult(JSON.parse(text.replace(/```json|```/g,'').trim()));
+    }catch(e){setErr('解析エラー: '+e.message);}
+    finally{setLoading(false);}
+  };
+
+  const doSave=d=>{
+    const drinkSales=parseInt(d.drinkSales)||0;
+    const covers=parseInt(d.totalCovers)||0;
+    const totalSales=parseInt(d.totalSales)||0;
+    const foodSales=parseInt(d.foodSales)||0;
+    const tableCount=parseInt(d.tableCount)||0;
+    const drinkCount=parseInt(d.drinkCount)||0;
+    let rec;
+    if(false&&saveMode==='add'&&existing){/* add modeは廃止、常に上書き */
+      const mD=(existing.drinkSales||0)+drinkSales;
+      const mC=(existing.totalCovers||0)+covers;
+      const mT=(existing.totalSales||0)+totalSales;
+      const mF=(existing.foodSales||0)+foodSales;
+      const mTbl=(existing.tableCount||0)+tableCount;
+      const mDC=(existing.drinkCount||0)+drinkCount;
+      rec={date:selDate,totalSales:mT,totalCovers:mC,drinkSales:mD,drinkCount:mDC,foodSales:mF,tableCount:mTbl,
+        drinkPerCover:mC>0?mD/mC:0,drinkRatio:mT>0?mD/mT:0,
+        closedAt:new Date().toISOString(),notes:existing.notes||d.notes||''};
+    }else{
+      rec={date:selDate,totalSales,totalCovers:covers,drinkSales,drinkCount,foodSales,tableCount,
+        lunchCovers:parseInt(d.lunchCovers)||0,dinnerCovers:parseInt(d.dinnerCovers)||0,
+        lunchDrinkSales:parseInt(d.lunchDrinkSales)||0,dinnerDrinkSales:parseInt(d.dinnerDrinkSales)||0,
+        drinkPerCover:covers>0?drinkSales/covers:0,drinkRatio:totalSales>0?drinkSales/totalSales:0,
+        closedAt:new Date().toISOString(),notes:d.notes||''};
+    }
+    /* 伝票ジャーナルから個別テーブル記録を抽出してdata.tablesにも保存 */
+    const extractedTables=(d.tables||[]).filter(t=>t.total>0||t.drinkTotal>0).map(t=>({
+      id:uid(),date:selDate,
+      time:t.time||'',seat:t.seat||'',covers:parseInt(t.covers)||0,
+      course:t.course||'',
+      drinks:t.drinks||[],
+      drinkTotal:parseInt(t.drinkTotal)||0,
+      foodTotal:parseInt(t.foodTotal)||0,
+      total:parseInt(t.total)||0,
+      drinkPerCover:(parseInt(t.covers)||0)>0?(parseInt(t.drinkTotal)||0)/(parseInt(t.covers)||0):0,
+      drinksPerCover:(parseInt(t.covers)||0)>0?(t.drinks||[]).reduce((s,d)=>s+(d.qty||0),0)/(parseInt(t.covers)||0):0,
+      savedAt:new Date().toISOString()
+    }));
+    setData(prev=>{
+      const days=[...(prev.days||[]).filter(x=>x.date!==selDate),rec];
+      /* 同日のテーブルデータは上書き（ジャーナル再アップ時の重複防止） */
+      const tables=extractedTables.length
+        ?[...(prev.tables||[]).filter(t=>t.date!==selDate),...extractedTables]
+        :(prev.tables||[]);
+      return{...prev,days,tables};
+    });
+    setSaved(true);setImg(null);setImgB64(null);setResult(null);setFileName('');
+  };
+
+  const delDay=()=>{
+    if(!confirm(`${selDate} のデータを削除しますか？`))return;
+    setData(prev=>({...prev,days:(prev.days||[]).filter(x=>x.date!==selDate)}));
+    setSaved(false);
+  };
+
+  const doneCount=(data.days||[]).length;
+  const isFuture=selDate>=today();
+  const inp=(k,l,placeholder,opts={})=>React.createElement('div',{key:k},
+    React.createElement('label',{className:'lbl'},l),
+    React.createElement('input',{type:'number',value:mv[k],onChange:e=>setMv(p=>({...p,[k]:e.target.value})),placeholder:placeholder||'0',...opts})
+  );
+
+  return React.createElement('div',null,
+    /* 日付ナビ */
+    React.createElement('div',{className:'card',style:{marginBottom:12}},
+      React.createElement('div',{style:{fontSize:11,color:'var(--text2)',marginBottom:8}},
+        React.createElement('i',{className:'ti ti-calendar-stats',style:{marginRight:4}}),
+        `登録済み ${doneCount}日分`
+      ),
+      React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
+        React.createElement('button',{onClick:()=>changeDate(prevDay(selDate)),style:{padding:'6px 10px',flexShrink:0}},
+          React.createElement('i',{className:'ti ti-chevron-left'})
+        ),
+        React.createElement('input',{type:'date',value:selDate,max:prevDay(today()),
+          onChange:e=>changeDate(e.target.value),
+          style:{flex:1,textAlign:'center',fontWeight:700,fontSize:15}}),
+        React.createElement('button',{onClick:()=>changeDate(nextDay(selDate)),disabled:nextDay(selDate)>=today(),style:{padding:'6px 10px',flexShrink:0}},
+          React.createElement('i',{className:'ti ti-chevron-right'})
+        )
+      ),
+      existing&&!saved&&React.createElement('div',{style:{marginTop:10,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 10px',background:'#fef3c7',borderRadius:'var(--r)',border:'0.5px solid #fcd34d'}},
+        React.createElement('span',{style:{fontSize:12,color:'#92400e'}},
+          React.createElement('i',{className:'ti ti-check-circle',style:{marginRight:4,color:'var(--green)'}}),
+          `登録済み — ドリンク売上 ¥${fmt(existing.drinkSales)} / ${existing.totalCovers||0}名`
+        ),
+        React.createElement('button',{onClick:delDay,style:{padding:'3px 8px',fontSize:11,color:'var(--red)',borderColor:'#fca5a5',background:'#fee2e2',flexShrink:0}},
+          React.createElement('i',{className:'ti ti-trash'}),' 削除'
+        )
+      )
+    ),
+    /* 保存後 */
+    saved&&React.createElement('div',{className:'card',style:{background:'#f0fdf4',borderColor:'#86efac',marginBottom:12}},
+      React.createElement('div',{style:{fontSize:14,fontWeight:700,color:'var(--green)',marginBottom:12}},
+        React.createElement('i',{className:'ti ti-check',style:{marginRight:6}}),weekLabel(selDate),'のデータを保存しました'
+      ),
+      React.createElement('div',{style:{display:'flex',gap:8}},
+        React.createElement('button',{
+          onClick:()=>changeDate(prevDay(selDate)),
+          style:{flex:2,background:'var(--blue)',color:'#fff',border:'none',fontWeight:600,justifyContent:'center',padding:'10px'}
+        },React.createElement('i',{className:'ti ti-chevron-left'}),' 前の日へ'),
+        React.createElement('button',{onClick:()=>setSaved(false),style:{flex:1,justifyContent:'center'}},'続けて編集')
+      )
+    ),
+    /* 入力フォーム */
+    !saved&&!isFuture&&React.createElement('div',null,
+      /* 手入力フォーム（メイン） */
+      React.createElement('div',{className:'card',style:{marginBottom:10}},
+        React.createElement('div',{style:{fontSize:13,fontWeight:700,marginBottom:14,display:'flex',alignItems:'center',gap:6}},
+          React.createElement('i',{className:'ti ti-edit',style:{color:'var(--blue)'}}),
+          existing?'データを編集':'日次データを入力'
+        ),
+        /* 主要3項目 */
+        React.createElement('div',{style:{marginBottom:14}},
+          React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'var(--text2)',marginBottom:8,letterSpacing:'0.05em'}},'▌ 基本情報（必須）'),
+          React.createElement('div',{className:'grid3'},
+            inp('totalSales','総売上（税抜）','例: 280000'),
+            inp('totalCovers','総客数','例: 42'),
+            inp('drinkSales','ドリンク売上','例: 65000')
+          )
+        ),
+        /* 任意項目 */
+        React.createElement('div',{style:{marginBottom:14}},
+          React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'var(--text2)',marginBottom:8,letterSpacing:'0.05em'}},'▌ 詳細（任意）'),
+          React.createElement('div',{className:'grid3'},
+            inp('drinkCount','D杯数','例: 85'),
+            inp('lunchCovers','ランチ客数','例: 20'),
+            inp('dinnerCovers','ディナー客数','例: 22')
+          ),
+          React.createElement('div',{className:'grid2',style:{marginTop:8}},
+            inp('lunchDrinkSales','ランチD売上','例: 12000'),
+            inp('dinnerDrinkSales','ディナーD売上','例: 53000')
+          )
+        ),
+        /* メモ */
+        React.createElement('div',{marginBottom:10},
+          React.createElement('label',{className:'lbl'},'メモ（任意）'),
+          React.createElement('input',{type:'text',value:mv.notes||'',onChange:e=>setMv(p=>({...p,notes:e.target.value})),placeholder:'特記事項など',style:{width:'100%',boxSizing:'border-box'}})
+        ),
+        React.createElement('button',{
+          onClick:()=>doSave(mv),
+          disabled:!mv.totalSales&&!mv.drinkSales,
+          style:{background:'var(--green)',color:'#fff',border:'none',fontWeight:600,justifyContent:'center',width:'100%',padding:'12px',borderRadius:'var(--r)',display:'flex',alignItems:'center',gap:6,cursor:'pointer',marginTop:12,fontSize:14}
+        },React.createElement('i',{className:'ti ti-device-floppy'}),' 保存する')
+      ),
+      /* AIで読み取る（折りたたみ・任意） */
+      React.createElement('div',{className:'card',style:{background:'var(--surface2)'}},
+        React.createElement('button',{onClick:()=>setShowAI(p=>!p),style:{width:'100%',background:'none',border:'none',padding:0,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',fontWeight:600,fontSize:13}},
+          React.createElement('span',null,React.createElement('i',{className:'ti ti-sparkles',style:{marginRight:6,color:'var(--blue)'}}),
+            'AIで自動入力（Zレポート画像）'
+          ),
+          React.createElement('i',{className:`ti ti-chevron-${showAI?'up':'down'}`,style:{color:'var(--text3)'}})
+        ),
+        showAI&&React.createElement('div',{style:{marginTop:12}},
+          !apiKey&&React.createElement('div',{style:{fontSize:12,color:'var(--amber)',marginBottom:8,padding:'6px 10px',background:'#fef3c7',borderRadius:'var(--r)'}},
+            React.createElement('i',{className:'ti ti-alert-triangle',style:{marginRight:4}}),'APIキーが未設定です'
+          ),
+          !img&&React.createElement(UploadZone,{onFile:f=>{
+            setErr('');setResult(null);setFileName(f.name||'');
+            setImg(f.type==='application/pdf'?'__pdf__':URL.createObjectURL(f));
+            compressImage(f).then(({b64,mime:m})=>{setImgB64(b64);setMime(m);}).catch(e=>setErr('読み込みエラー: '+e.message));
+          },label:'Zレポートを選択（画像・PDF）',hint:'ZレポートPDF・レシート画像どちらも対応'}),
+          img&&React.createElement('div',null,
+            img==='__pdf__'
+              ?React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',background:'var(--surface)',borderRadius:'var(--r)',border:'0.5px solid var(--border)',marginBottom:8}},
+                  React.createElement('i',{className:'ti ti-file-type-pdf',style:{fontSize:24,color:'var(--red)',flexShrink:0}}),
+                  React.createElement('span',{style:{fontSize:12,fontWeight:600,wordBreak:'break-all'}},fileName))
+              :React.createElement('img',{src:img,className:'receipt-img'}),
+            !result&&React.createElement('div',{style:{display:'flex',gap:8,marginBottom:8}},
+              React.createElement('button',{onClick:()=>{setImg(null);setImgB64(null);setFileName('');},style:{flex:1}},
+                React.createElement('i',{className:'ti ti-x'}),' やり直し'),
+              React.createElement('button',{onClick:analyze,disabled:loading||!apiKey,style:{flex:2,background:'var(--blue)',color:'#fff',border:'none',fontWeight:600,justifyContent:'center'}},
+                loading?[React.createElement('i',{key:'i',className:'ti ti-loader spin'}),' 解析中...']
+                       :[React.createElement('i',{key:'i',className:'ti ti-sparkles'}),' AIで解析']
+              )
+            ),
+            err&&React.createElement('div',{style:{color:'var(--red)',fontSize:12,padding:'8px 12px',background:'#fee2e2',borderRadius:'var(--r)',marginBottom:8}},err),
+            result&&React.createElement('div',null,
+              React.createElement('div',{style:{padding:'10px 12px',background:'#f0fdf4',borderRadius:'var(--r)',border:'0.5px solid #86efac',marginBottom:10}},
+                React.createElement('div',{style:{fontSize:12,fontWeight:600,color:'var(--green)',marginBottom:8}},
+                  React.createElement('i',{className:'ti ti-check-circle',style:{marginRight:4}}),'解析完了 — フォームに転記しますか？'
+                ),
+                React.createElement('div',{className:'grid4'},
+                  [{l:'総売上',v:`¥${fmt(result.totalSales)}`},{l:'客数',v:`${result.totalCovers}名`},{l:'D売上',v:`¥${fmt(result.drinkSales)}`},{l:'D杯数',v:`${result.drinkCount||'?'}杯`}]
+                  .map(({l,v})=>React.createElement('div',{key:l,style:{textAlign:'center'}},
+                    React.createElement('div',{style:{fontSize:13,fontWeight:700}},v),
+                    React.createElement('div',{style:{fontSize:10,color:'var(--text2)'}},l)
+                  ))
+                )
+              ),
+              React.createElement('button',{
+                onClick:()=>{
+                  setMv({
+                    totalSales:result.totalSales||'',totalCovers:result.totalCovers||'',drinkSales:result.drinkSales||'',
+                    drinkCount:result.drinkCount||'',lunchCovers:result.lunchCovers||'',dinnerCovers:result.dinnerCovers||'',
+                    lunchDrinkSales:result.lunchDrinkSales||'',dinnerDrinkSales:result.dinnerDrinkSales||'',notes:result.notes||''
+                  });
+                  setShowAI(false);setImg(null);setImgB64(null);setResult(null);setFileName('');
+                },
+                style:{background:'var(--blue)',color:'#fff',border:'none',fontWeight:600,justifyContent:'center',width:'100%',padding:'10px',borderRadius:'var(--r)',display:'flex',alignItems:'center',gap:6,cursor:'pointer'}
+              },React.createElement('i',{className:'ti ti-file-import'}),' フォームに転記して確認')
+            )
+          )
+        )
+      )
+    ),
+    isFuture&&React.createElement('div',{className:'empty'},
+      React.createElement('i',{className:'ti ti-calendar-x'}),'未来の日付は登録できません'
+    )
+  );
+}
+
+/* ── Batch Import ── */
+function BatchImport({apiKey,data,setData}){
+  const [items,setItems]=useState([]);
+  const [running,setRunning]=useState(false);
+  const [mode,setMode]=useState('day');
+  const [bulkDate,setBulkDate]=useState(today);
+  const fileRef=useRef();
+
+  const switchMode=m=>{if(running)return;setMode(m);setItems([]);};
+  const applyBulkDate=()=>{
+    if(!bulkDate)return;
+    setItems(prev=>prev.map(x=>x.status==='done'&&!x.date?{...x,date:bulkDate}:x));
+  };
+
+  const addFiles=fl=>{
+    const arr=Array.from(fl).filter(f=>f.type.startsWith('image/')||f.type==='application/pdf');
+    if(!arr.length)return;
+    setItems(prev=>[...prev,...arr.map(f=>({id:uid(),name:f.name,file:f,status:'waiting',results:null,result:null,err:'',date:''}))]);
+  };
+  const upd=(id,patch)=>setItems(prev=>prev.map(x=>x.id===id?{...x,...patch}:x));
+  const updDayDate=(id,idx,date)=>setItems(prev=>prev.map(x=>{
+    if(x.id!==id)return x;
+    const results=[...(x.results||[])];results[idx]={...results[idx],date};return{...x,results};
+  }));
+
+  const getPrompt=()=>{
+    if(mode==='day'){
+      return `これは飲食店の日次締め（Z）レポートまたは日計レシートです。複数日分が含まれる場合はすべての日分を抽出してください。JSONのみで返答（説明文・コードブロック不要）：
+[{"date":"YYYY-MM-DD","totalSales":総売上数値,"totalCovers":総客数数値,"drinkSales":ドリンク売上数値,"drinkCount":ドリンク総杯数数値,"foodSales":フード売上数値,"tableCount":組数数値,"lunchCovers":ランチ客数数値,"dinnerCovers":ディナー客数数値,"lunchDrinkSales":ランチドリンク売上数値,"dinnerDrinkSales":ディナードリンク売上数値,"notes":"特記事項（なければ空文字）","tables":[{"time":"HH:MM","seat":"席名","covers":人数数値,"course":"コース名","drinkTotal":ドリンク合計数値,"foodTotal":フード合計数値,"total":合計数値}]}]
+必ず配列で返すこと（1日分でも配列）。日付はYYYY-MM-DD形式。伝票ジャーナル・明細表など個別テーブルの記録がある場合はtablesに各テーブルを抽出（drinks配列は不要）。timeは退店時間。seatはテーブル番号・席名。ない場合はtables:[]。drinkCountはドリンク品目の数量合計。不明な値は0。`;
+    }
+    const {drinks:masterDrinks,excludes:masterExcludes,seats:masterSeats}=loadMaster();
+    const masterNote=masterDrinks.length?`\n【登録済みドリンク商品マスター】以下の品名は必ずdrinksに含める：\n${masterDrinks.join('、')}\nマスターにない品名は一般的な知識で判断する。`:'';
+    const excludeNote=(masterExcludes&&masterExcludes.length)?`\n【除外リスト】以下の品名は絶対にdrinksに含めないこと（コース・フード商品）：\n${masterExcludes.join('、')}`:''
+    const seatNote=(masterSeats&&masterSeats.length)?`\n【席マスター】レシートに席名・テーブル番号等があれば"seat"に記載。以下から最も近いものを選ぶ：\n${masterSeats.join('、')}\nなければ空文字。`:'\n【席】レシートに席名・テーブル番号等があれば"seat"に記載。なければ空文字。';
+    return `このレストランのテーブルレシートを解析してください。JSONのみで返答（説明文・コードブロック不要）：
+{"date":"YYYY-MM-DD","time":"HH:MM","covers":人数数値,"seat":"席名（テーブル番号・個室名等。不明は空文字）","course":"コース名（不明は空文字）","drinks":[{"name":"品名","qty":数量数値,"unitPrice":単価数値,"subtotal":小計数値}],"drinkTotal":ドリンク合計数値,"foodTotal":フード合計数値,"total":合計数値}
+日付・時刻はレシートから読み取る（date: YYYY-MM-DD形式、time: HH:MM形式）。timeは必ず「退店時間」を使うこと（入店時間ではなく）。読み取れない場合は空文字""。
+【drinksの列挙ルール】以下のいずれかに該当する品目のみdrinksに含める：
+①アルコール類：生ビール・瓶ビール・ビール銘柄（例：白穂乃香・エビス・プレミアムモルツ等）、ワイン・シャンパン・スパークリング、日本酒・銘柄酒（例：獺祭・久保田等）、焼酎・泡盛、ウイスキー・ブランデー、カクテル・サワー・ハイボール、梅酒・リキュール、紹興酒・中国酒
+②ソフトドリンク類：ジュース・コーラ・ウーロン茶・緑茶・水・ミネラルウォーター・コーヒー・ノンアルコール飲料
+品名だけでは判断できない場合は単価・文脈から推測すること。料理・フード・コース料金・サービス料は絶対にdrinksに含めないこと。drinkTotalはdrinksの合計金額と一致させること。不明な金額は0。${excludeNote}${masterNote}${seatNote}`;
+  };
+
+  const processAll=async()=>{
+    if(!apiKey){alert('APIキーを設定してください');return;}
+    const snap=items.filter(i=>i.status==='waiting'||i.status==='error');
+    if(!snap.length)return;
+    setRunning(true);
+    const prompt=getPrompt();
+    for(let i=0;i<snap.length;i++){
+      const item=snap[i];
+      upd(item.id,{status:'processing',err:''});
+      try{
+        const{b64,mime}=await compressImage(item.file);
+        if(mode==='day'){
+          /* まずルールベースパーサーを試みる（AIなし・無料） */
+          if(mime==='application/pdf'){
+            upd(item.id,{status:'processing',err:'PDF解析中（AIなし）...'});
+            let parseErr='';
+            try{
+              const {drinks:mD,excludes:mE}=loadMaster();
+              const text=await extractPDFText(b64);
+              const parsed=parseJournalText(text,mD,mE);
+              if(parsed&&parsed.length){
+                upd(item.id,{status:'done',results:parsed.map(d=>({...d,date:(d.date&&/^\d{4}-\d{2}-\d{2}$/.test(d.date))?d.date:''})),err:''});
+                if(i<snap.length-1)await new Promise(r=>setTimeout(r,400));
+                continue;
+              }
+              /* テキストは取れたが伝票形式でなかった場合 */
+              const hasDate=text.includes('営業日付')||text.includes('営業日');
+              const hasTicket=text.includes('伝票')||text.includes('テーブル');
+              const preview=text.slice(0,200).replace(/\n/g,'↵');
+              parseErr=hasDate&&hasTicket
+                ?'伝票の形式が読み取れませんでした（APIで再解析するにはクレジットが必要）'
+                :`[デバッグ] PDF先頭200文字: ${preview||'(空)'}`;
+            }catch(pe){
+              parseErr='PDF読み込みエラー: '+pe.message;
+            }
+            /* ルールベース失敗 → APIには回さずエラー表示 */
+            upd(item.id,{status:'error',err:parseErr||'伝票ジャーナル形式を認識できませんでした'});
+            continue;
+          }
+          /* Step1: サマリー抽出（軽量・高速） */
+          const summaryPrompt=`これは飲食店の日次締め（Z）レポートまたは伝票ジャーナルです。JSONのみで返答（説明文不要）：
+[{"date":"YYYY-MM-DD","totalSales":総売上数値,"totalCovers":総客数数値,"drinkSales":ドリンク売上数値,"drinkCount":ドリンク総杯数数値,"foodSales":フード売上数値,"tableCount":組数数値,"lunchCovers":ランチ客数数値,"dinnerCovers":ディナー客数数値,"lunchDrinkSales":ランチドリンク売上数値,"dinnerDrinkSales":ディナードリンク売上数値,"notes":"特記事項（なければ空文字）"}]
+必ず配列で返すこと。日付はYYYY-MM-DD形式。drinkCountはドリンク品目の数量合計。ランチ（〜16:59）/ディナー（17:00〜）別データがあれば抽出。不明な値は0。`;
+          const text1=await callVision(apiKey,b64,mime,summaryPrompt,4096);
+          const arr=(Array.isArray(JSON.parse(text1.replace(/```json|```/g,'').trim()))?JSON.parse(text1.replace(/```json|```/g,'').trim()):[JSON.parse(text1.replace(/```json|```/g,'').trim())]).map(d=>({...d,date:(d.date&&/^\d{4}-\d{2}-\d{2}$/.test(d.date))?d.date:''}));
+          upd(item.id,{status:'processing',results:arr,err:'テーブル明細を抽出中...'});
+          /* Step2: テーブル明細抽出（日付ごとに分割して要求） */
+          const dates=[...new Set(arr.map(d=>d.date).filter(Boolean))];
+          let allTables=[];
+          for(const date of dates){
+            try{
+              const tablePrompt=`この伝票ジャーナルから ${date} 分のテーブル明細のみをJSON配列で返答（説明文不要）：
+[{"time":"HH:MM","seat":"席名またはテーブル番号","covers":人数数値,"course":"コース名","drinkTotal":ドリンク合計数値,"foodTotal":フード合計数値,"total":合計数値,"drinks":[{"name":"品名","qty":数量数値,"unitPrice":単価数値,"subtotal":小計数値}]}]
+timeは退店時間。seatはテーブル番号・個室名（例: T8、RURI）。drinksはアルコール・ソフトドリンク品目のみ（料理・コース料金は含めない）。${date}以外の日付は含めないこと。不明な値は0。`;
+              const text2=await callVision(apiKey,b64,mime,tablePrompt,8192);
+              const tables=JSON.parse(text2.replace(/```json|```/g,'').trim());
+              if(Array.isArray(tables))allTables=[...allTables,...tables.map(t=>({...t,date}))];
+            }catch(te){console.warn('table extract failed for',date,te.message);}
+            await new Promise(r=>setTimeout(r,600));
+          }
+          upd(item.id,{status:'done',results:arr.map(d=>({...d,tables:allTables.filter(t=>t.date===d.date)})),err:''});
+        }else{
+          const text=await callVision(apiKey,b64,mime,prompt,2000);
+          const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
+          const dateStr=(parsed.date&&/^\d{4}-\d{2}-\d{2}$/.test(parsed.date))?parsed.date:'';
+          parsed.drinkPerCover=parsed.covers>0?parsed.drinkTotal/parsed.covers:0;
+          parsed.drinksPerCover=parsed.covers>0?(parsed.drinks||[]).reduce((s,d)=>s+(d.qty||0),0)/parsed.covers:0;
+          upd(item.id,{status:'done',result:parsed,date:dateStr});
+        }
+      }catch(e){
+        const msg=e.message.includes('100 PDF pages')
+          ?'PDFが100ページを超えています。ファイルを分割してください。'
+          :e.message.includes('too long')||e.message.includes('tokens')
+          ?'ファイルが大きすぎます。'+(mode==='day'?'週単位程度に分割してください（目安：8MB以内）。':'1テーブル分のレシートを1枚ずつアップロードしてください。')
+          :e.message;
+        upd(item.id,{status:'error',err:msg});
+      }
+      if(i<snap.length-1)await new Promise(r=>setTimeout(r,1200));
+    }
+    setRunning(false);
+  };
+
+  const saveAll=()=>{
+    if(mode==='day'){
+      const allDays=items.filter(i=>i.status==='done').flatMap(i=>(i.results||[]).filter(d=>d.date).map(d=>{
+        const totalSales=parseInt(d.totalSales)||0,drinkSales=parseInt(d.drinkSales)||0,covers=parseInt(d.totalCovers)||0;
+        return{date:d.date,totalSales,totalCovers:covers,drinkSales,drinkCount:parseInt(d.drinkCount)||0,
+          foodSales:parseInt(d.foodSales)||0,tableCount:parseInt(d.tableCount)||0,
+          lunchCovers:parseInt(d.lunchCovers)||0,dinnerCovers:parseInt(d.dinnerCovers)||0,
+          lunchDrinkSales:parseInt(d.lunchDrinkSales)||0,dinnerDrinkSales:parseInt(d.dinnerDrinkSales)||0,
+          notes:d.notes||'',drinkPerCover:covers>0?drinkSales/covers:0,drinkRatio:totalSales>0?drinkSales/totalSales:0,
+          closedAt:new Date().toISOString(),
+          _tables:(d.tables||[]).filter(t=>t.total>0||t.drinkTotal>0)};
+      }));
+      if(!allDays.length){alert('日付が設定されたデータがありません');return;}
+      setData(prev=>{
+        const days=[...(prev.days||[])];
+        let tables=[...(prev.tables||[])];
+        allDays.forEach(nd=>{
+          const{_tables,...dayRec}=nd;
+          const idx=days.findIndex(d=>d.date===dayRec.date);
+          if(idx>=0)days[idx]=dayRec;else days.push(dayRec);
+          if(_tables&&_tables.length){
+            tables=tables.filter(t=>t.date!==dayRec.date);
+            _tables.forEach(t=>tables.push({
+              id:uid(),date:dayRec.date,
+              time:t.time||'',seat:t.seat||'',covers:parseInt(t.covers)||0,
+              course:t.course||'',drinks:t.drinks||[],
+              drinkTotal:parseInt(t.drinkTotal)||0,foodTotal:parseInt(t.foodTotal)||0,
+              total:parseInt(t.total)||0,
+              drinkPerCover:(parseInt(t.covers)||0)>0?(parseInt(t.drinkTotal)||0)/(parseInt(t.covers)||0):0,
+              savedAt:new Date().toISOString()
+            }));
+          }
+        });
+        return{...prev,days:days.sort((a,b)=>a.date.localeCompare(b.date)),tables};
+      });
+      setItems(prev=>prev.filter(i=>i.status!=='done'));
+      alert(`${allDays.length}日分のデータを保存しました`);
+    }else{
+      const done=items.filter(i=>i.status==='done'&&i.result).map(item=>({
+        ...item,date:item.date||bulkDate /* 日付未設定は一括日付で補完 */
+      })).filter(item=>item.date);
+      if(!done.length){alert('日付が設定されていません。上の「一括日付」欄に日付を入力してください');return;}
+      const timeFromResult=r=>{
+        /* AIが time を返してくれる場合はそれを使う */
+        if(r.time&&/^\d{2}:\d{2}$/.test(r.time))return r.time;
+        return'00:00';
+      };
+      setData(prev=>({...prev,tables:[...(prev.tables||[]),...done.map(item=>({
+        id:uid(),date:item.date,time:timeFromResult(item.result),covers:item.result.covers||0,
+        course:item.result.course||'',seat:item.result.seat||'',
+        drinks:item.result.drinks||[],drinkTotal:item.result.drinkTotal||0,foodTotal:item.result.foodTotal||0,
+        total:item.result.total||0,drinkPerCover:item.result.drinkPerCover||0,
+        drinksPerCover:item.result.drinksPerCover||0,savedAt:new Date().toISOString()
+      }))]}));
+      setItems(prev=>prev.filter(i=>i.status!=='done'));
+      const savedDates=[...new Set(done.map(i=>i.date))].sort();
+      const dateRange=savedDates.length===1?savedDates[0]:`${savedDates[0]} 〜 ${savedDates[savedDates.length-1]}`;
+      alert(`${done.length}件のテーブルデータを保存しました（${dateRange}）\n\nレポート→週次・月次の「日別一覧」に反映されます。`);
+    }
+  };
+
+  const doneCount=items.filter(i=>i.status==='done').length;
+  const doneWithDate=mode==='day'
+    ?items.filter(i=>i.status==='done').reduce((s,i)=>s+(i.results||[]).filter(d=>d.date).length,0)
+    :items.filter(i=>i.status==='done'&&i.result).length; /* 日付不問で件数カウント */
+  const noDateCount=mode==='table'?items.filter(i=>i.status==='done'&&i.result&&!i.date).length:0;
+  const errCount=items.filter(i=>i.status==='error').length;
+  const waitCount=items.filter(i=>i.status==='waiting').length;
+
+  const modeInfo=mode==='day'
+    ?{title:'日次Zレポート一括登録',desc:'週単位・月単位のZレポートPDFをまとめてアップロードできます。複数日が含まれるPDFは自動で日ごとに分割して抽出します。例：「5月1w.pdf」なら7日分を一度に登録。',hint:'1ファイル = 1日〜週単位のZレポート（画像・PDF）'}
+    :{title:'テーブルレシート一括登録',desc:'テーブルごとのレシートを複数まとめて解析・登録できます。日付はレシートから自動抽出します。',hint:'1ファイル = テーブル1組分のレシート（画像・PDF）'};
+
+  return React.createElement('div',null,
+    /* Mode switcher */
+    React.createElement('div',{className:'seg-ctrl',style:{marginBottom:10}},
+      ['day','table'].map(m=>React.createElement('button',{key:m,
+        className:`seg-btn${mode===m?' active':''}`,onClick:()=>switchMode(m)},
+        m==='day'?[React.createElement('i',{key:'i',className:'ti ti-calendar-stats'}),' 日次Zレポート']
+                 :[React.createElement('i',{key:'i',className:'ti ti-receipt'}),' テーブルレシート']
+      ))
+    ),
+    /* Info card */
+    React.createElement('div',{className:'card',style:{marginBottom:10,background:'#eff3ff',border:'0.5px solid #a5b4fc'}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:4,color:'var(--blue)'}},
+        React.createElement('i',{className:'ti ti-info-circle',style:{marginRight:5}}),modeInfo.title),
+      React.createElement('div',{style:{fontSize:12,color:'var(--text2)',lineHeight:1.7}},modeInfo.desc)
+    ),
+    /* テーブルモード：一括日付設定 */
+    mode==='table'&&React.createElement('div',{className:'card',style:{marginBottom:10,display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}},
+      React.createElement('div',{style:{fontSize:12,fontWeight:600,color:'var(--text1)',flexShrink:0}},
+        React.createElement('i',{className:'ti ti-calendar',style:{marginRight:4}}),'一括日付'
+      ),
+      React.createElement('input',{type:'date',value:bulkDate,max:today(),onChange:e=>setBulkDate(e.target.value),
+        style:{fontSize:13,padding:'4px 8px',flex:1,minWidth:120}}),
+      React.createElement('button',{onClick:applyBulkDate,
+        style:{padding:'5px 10px',fontSize:12,background:'var(--surface2)',border:'0.5px solid var(--border2)',borderRadius:'var(--r)',cursor:'pointer',flexShrink:0,whiteSpace:'nowrap'}},
+        '日付未設定に適用'),
+      React.createElement('div',{style:{fontSize:11,color:'var(--text3)',width:'100%'}},
+        'レシートから日付を読み取れない場合にここで指定した日付が使われます'
+      )
+    ),
+    /* Control bar */
+    items.length>0&&React.createElement('div',{className:'card',style:{marginBottom:10}},
+      React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:8,alignItems:'center',justifyContent:'space-between'}},
+        React.createElement('div',{style:{fontSize:12,color:'var(--text2)'}},
+          mode==='day'
+            ?`${items.length}ファイル | ✓完了${doneCount}(${doneWithDate}日分) ⌛待機${waitCount} ✗エラー${errCount}`
+            :`${items.length}枚 | ✓完了${doneCount}${noDateCount>0?`(日付未設定${noDateCount}件)`:''} ⌛待機${waitCount} ✗エラー${errCount}`
+        ),
+        React.createElement('div',{style:{display:'flex',gap:6,flexWrap:'wrap'}},
+          !running&&(waitCount>0||errCount>0)&&React.createElement('button',{onClick:processAll,
+            style:{background:'var(--blue)',color:'#fff',border:'none',padding:'7px 12px',borderRadius:'var(--r)',fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:13}},
+            React.createElement('i',{className:'ti ti-sparkles'}),' 解析開始'
+          ),
+          running&&React.createElement('div',{style:{display:'flex',alignItems:'center',gap:6,fontSize:13,color:'var(--blue)',padding:'7px 0'}},
+            React.createElement('i',{className:'ti ti-loader spin'}),' 解析中...'
+          ),
+          doneCount>0&&!running&&React.createElement('button',{onClick:saveAll,
+            style:{background:'var(--green)',color:'#fff',border:'none',padding:'7px 12px',borderRadius:'var(--r)',fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontSize:13}},
+            React.createElement('i',{className:'ti ti-device-floppy'}),
+            mode==='day'
+              ?` 保存（${doneWithDate}日分）`
+              :noDateCount>0?` 保存（${doneCount}件・日付未設定${noDateCount}件は一括日付で補完）`:` 保存（${doneCount}件）`
+          ),
+          !running&&React.createElement('button',{onClick:()=>setItems([]),
+            style:{padding:'6px 10px',borderRadius:'var(--r)',border:'0.5px solid var(--border2)',cursor:'pointer',fontSize:12,color:'var(--text2)'}},
+            'クリア'
+          )
+        )
+      )
+    ),
+    /* Upload zone */
+    React.createElement('div',{className:'upload-zone',style:{marginBottom:10,cursor:'pointer'},
+      onClick:()=>fileRef.current.click(),
+      onDragOver:e=>e.preventDefault(),
+      onDrop:e=>{e.preventDefault();addFiles(e.dataTransfer.files)}
+    },
+      React.createElement('input',{ref:fileRef,type:'file',accept:'image/*,.pdf',multiple:true,style:{display:'none'},
+        onChange:e=>{addFiles(e.target.files);e.target.value=''}}),
+      React.createElement('i',{className:mode==='day'?'ti ti-calendar-plus':'ti ti-files',style:{fontSize:32,color:'var(--text3)',display:'block',marginBottom:6}}),
+      React.createElement('div',{style:{fontSize:14,fontWeight:600,color:'var(--text2)'}},
+        items.length?`さらに追加 / 現在 ${items.length}件`:'ファイルを複数まとめて選択'
+      ),
+      React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginTop:4}},modeInfo.hint,' | タップして複数選択 / ドラッグ＆ドロップ')
+    ),
+    /* Item list */
+    items.length>0&&React.createElement('div',null,
+      items.map(item=>React.createElement('div',{key:item.id,
+        style:{display:'flex',gap:8,padding:'9px 12px',marginBottom:6,background:'var(--surface)',
+          border:`1px solid ${item.status==='error'?'#fca5a5':item.status==='done'?'#86efac':'var(--border)'}`,
+          borderRadius:'var(--r)',alignItems:'flex-start'}},
+        React.createElement('div',{style:{fontSize:15,flexShrink:0,marginTop:2,
+          color:item.status==='done'?'var(--green)':item.status==='error'?'var(--red)':item.status==='processing'?'var(--blue)':'var(--text3)'}},
+          item.status==='processing'?React.createElement('i',{className:'ti ti-loader spin',style:{fontSize:14}})
+          :item.status==='done'?React.createElement('i',{className:'ti ti-check'})
+          :item.status==='error'?React.createElement('i',{className:'ti ti-x'})
+          :React.createElement('i',{className:'ti ti-clock'})
+        ),
+        React.createElement('div',{style:{flex:1,minWidth:0}},
+          React.createElement('div',{style:{fontSize:11,color:'var(--text2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:2}},item.name),
+          mode==='day'&&item.status==='done'&&(item.results||[]).map((d,idx)=>
+            React.createElement('div',{key:idx,style:{display:'flex',gap:6,alignItems:'center',marginTop:4,flexWrap:'wrap'}},
+              React.createElement('input',{type:'date',value:d.date,onChange:e=>updDayDate(item.id,idx,e.target.value),
+                style:{fontSize:12,padding:'3px 6px',border:`1px solid ${d.date?'var(--border2)':'var(--red)'}`,borderRadius:4,width:'auto'}}),
+              React.createElement('span',{style:{fontSize:12,color:'var(--text2)'}},
+                [d.totalSales?`¥${fmt(d.totalSales)}`:'',d.totalCovers?`${d.totalCovers}名`:'',d.drinkSales?`D¥${fmt(d.drinkSales)}`:''].filter(Boolean).join(' · '))
+            )
+          ),
+          mode==='table'&&item.status==='done'&&item.result&&React.createElement('div',{style:{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center',marginTop:4}},
+            React.createElement('input',{type:'date',value:item.date,onChange:e=>upd(item.id,{date:e.target.value}),
+              style:{fontSize:12,padding:'3px 6px',border:`1px solid ${item.date?'var(--border2)':'var(--red)'}`,borderRadius:4,width:'auto'}}),
+            React.createElement('span',{style:{fontSize:12,color:'var(--text2)'}},
+              [item.result.covers?`${item.result.covers}名`:'',item.result.drinkTotal?`D¥${fmt(item.result.drinkTotal)}`:'',item.result.total?`計¥${fmt(item.result.total)}`:''].filter(Boolean).join(' · '))
+          ),
+          item.status==='done'&&mode==='table'&&!item.date&&React.createElement('div',{style:{fontSize:11,color:'var(--red)',marginTop:3}},'⚠ 日付を入力してください'),
+          item.status==='error'&&React.createElement('div',{style:{fontSize:11,color:'var(--red)',marginTop:3}},item.err),
+          item.status==='waiting'&&React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginTop:2}},'解析待ち')
+        ),
+        React.createElement('button',{onClick:()=>setItems(prev=>prev.filter(x=>x.id!==item.id)),
+          disabled:item.status==='processing',
+          style:{flexShrink:0,padding:'2px 6px',fontSize:13,color:'var(--text3)',background:'none',border:'none',cursor:'pointer'}},
+          '×'
+        )
+      ))
+    )
+  );
+}
+
+/* ── Sheets共通ユーティリティ ── */
+const GAS_URL_KEY='drink_tracker_gas_url';
+const DEFAULT_GAS_URL='https://script.google.com/macros/s/AKfycbxXTAwVFp95QcBYFYt1-sjMRH9sCacB0AVFbnkexy11obPOATURpilTV1VbBHyT0d8x/exec';
+
+/* GASから返ってくる日付・時刻をアプリの形式に変換 */
+const sheetsToDate=v=>{
+  if(!v)return'';
+  const s=String(v).replace(/\//g,'-');
+  if(/^\d{5}$/.test(s)){const d=new Date((parseInt(s)-25569)*86400000);return d.toISOString().slice(0,10);}
+  if(s.includes('T')){const d=new Date(s);if(!isNaN(d))return d.toLocaleDateString('sv-SE');}
+  return s.slice(0,10);
+};
+const sheetsToTime=v=>{
+  if(!v)return'';
+  const s=String(v);
+  if(/^\d{1,2}:\d{2}/.test(s))return s.slice(0,5).padStart(5,'0');
+  if(s.includes('T')){
+    const d=new Date(s);
+    if(!isNaN(d))return`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+  const n=parseFloat(s);
+  if(!isNaN(n)&&n>=0&&n<1){const tot=Math.round(n*1440);return`${String(Math.floor(tot/60)).padStart(2,'0')}:${String(tot%60).padStart(2,'0')}`;}
+  return'';
+};
+function convertSheetsRows(rows){
+  if(!Array.isArray(rows))return[];
+  return rows.filter(r=>r['合計']>0||r['D売上']>0).map(r=>({
+    id:uid(),
+    date:sheetsToDate(r['日付']),
+    time:sheetsToTime(r['退店時間']),
+    seat:String(r['席']||''),
+    covers:parseInt(r['客数'])||0,
+    course:String(r['コース']||''),
+    drinks:[],
+    drinkTotal:parseInt(r['D売上'])||0,
+    foodTotal:parseInt(r['F売上'])||0,
+    total:parseInt(r['合計'])||0,
+    drinkPerCover:parseInt(r['1人D売上'])||0,
+    drinkCount:parseInt(r['D杯数'])||0,
+    drinksPerCover:parseInt(r['客数'])>0?(parseInt(r['D杯数'])||0)/(parseInt(r['客数'])||1):0,
+    savedAt:new Date().toISOString()
+  })).filter(r=>r.date);
+}
+function applyImport(imported,setData){
+  if(!imported.length)return 0;
+  const existingDates=new Set(imported.map(r=>r.date));
+  setData(prev=>({...prev,tables:[...(prev.tables||[]).filter(t=>!existingDates.has(t.date)),...imported]}));
+  return imported.length;
+}
+
+/* テーブルレコード1件をGAS Web AppにPOST（fire-and-forget）*/
+async function postTableToGas(rec){
+  const gasUrl=localStorage.getItem(GAS_URL_KEY)||DEFAULT_GAS_URL;
+  if(!gasUrl)return;
+  try{
+    await fetch(gasUrl,{
+      method:'POST',
+      mode:'no-cors',/* CORSプリフライト回避 */
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify(rec)
+    });
+  }catch(e){/* 失敗は無視。次の自動取り込みで整合 */}
+}
+
+/* ── Sheets Import ── */
+function SheetsImport({data,setData,autoStatus}){
+  const [url,setUrl]=useState(()=>localStorage.getItem(GAS_URL_KEY)||DEFAULT_GAS_URL);
+  const [loading,setLoading]=useState(false);
+  const [msg,setMsg]=useState('');
+  const [err,setErr]=useState('');
+
+  const saveUrl=v=>{setUrl(v);localStorage.setItem(GAS_URL_KEY,v);};
+
+  const doImport=async()=>{
+    if(!url){setErr('URLを入力してください');return;}
+    setLoading(true);setMsg('');setErr('');
+    try{
+      const res=await fetch(url);
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      const rows=await res.json();
+      if(!Array.isArray(rows))throw new Error('データ形式が正しくありません');
+      const imported=convertSheetsRows(rows);
+      if(!imported.length)throw new Error('インポートできるデータがありませんでした');
+      const cnt=applyImport(imported,setData);
+      const dates=new Set(imported.map(r=>r.date));
+      setMsg(`✓ ${cnt}件をインポートしました（${dates.size}日分）`);
+    }catch(e){setErr('エラー: '+e.message);}
+    finally{setLoading(false);}
+  };
+
+  return React.createElement('div',{className:'card',style:{marginTop:16,background:'#f0f7ff',border:'0.5px solid #93c5fd'}},
+    React.createElement('div',{style:{fontSize:13,fontWeight:700,marginBottom:10,color:'#1e40af'}},
+      React.createElement('i',{className:'ti ti-brand-google',style:{marginRight:6}}),'Google Sheetsからインポート'
+    ),
+    React.createElement('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:10}},
+      'GASのウェブアプリURLを設定するとSheetsのデータをレポートに取り込めます'
+    ),
+    React.createElement('div',{style:{display:'flex',gap:8,marginBottom:8}},
+      React.createElement('input',{
+        type:'text',value:url,
+        onChange:e=>saveUrl(e.target.value),
+        placeholder:'https://script.google.com/macros/s/...',
+        style:{flex:1,fontSize:12}
+      }),
+      React.createElement('button',{
+        onClick:doImport,disabled:loading||!url,
+        style:{flexShrink:0,background:'#1d4ed8',color:'#fff',border:'none',fontWeight:600,padding:'8px 14px',borderRadius:'var(--r)',cursor:'pointer',whiteSpace:'nowrap'}
+      },loading?React.createElement('i',{className:'ti ti-loader spin'}):'取り込む')
+    ),
+    msg&&React.createElement('div',{style:{fontSize:12,color:'var(--green)',padding:'6px 10px',background:'#f0fdf4',borderRadius:'var(--r)'}},msg),
+    err&&React.createElement('div',{style:{fontSize:12,color:'var(--red)',padding:'6px 10px',background:'#fee2e2',borderRadius:'var(--r)'}},err)
+  );
+}
+
+/* ── TableManager（テーブルデータ個別削除） ── */
+function TableManager({data,setData}){
+  const [open,setOpen]=useState(false);
+  const [confirmAll,setConfirmAll]=useState('');
+  const tables=data.tables||[];
+  /* 日付別グループ */
+  const byDate=useMemo(()=>{
+    const m={};
+    tables.forEach(t=>{
+      if(!m[t.date])m[t.date]=[];
+      m[t.date].push(t);
+    });
+    return Object.entries(m).sort((a,b)=>b[0].localeCompare(a[0]));
+  },[tables]);
+
+  const delById=id=>setData(prev=>({...prev,tables:(prev.tables||[]).filter(t=>t.id!==id)}));
+  const delByDate=date=>{
+    if(!window.confirm(`${date} のテーブルデータ（${byDate.find(([d])=>d===date)?.[1]?.length||0}件）を削除しますか？`))return;
+    setData(prev=>({...prev,tables:(prev.tables||[]).filter(t=>t.date!==date)}));
+  };
+  const delAll=()=>{
+    if(confirmAll!=='削除')return;
+    setData(prev=>({...prev,tables:[]}));
+    setConfirmAll('');
+  };
+
+  if(!tables.length)return React.createElement('div',{className:'card',style:{marginTop:16}},
+    React.createElement('div',{style:{fontSize:13,fontWeight:700,marginBottom:6}},
+      React.createElement('i',{className:'ti ti-table',style:{marginRight:6}}),'テーブルレシート管理'
+    ),
+    React.createElement('div',{style:{fontSize:12,color:'var(--text3)',textAlign:'center',padding:'12px 0'}},'データがありません')
+  );
+
+  return React.createElement('div',{className:'card',style:{marginTop:16}},
+    React.createElement('button',{
+      onClick:()=>setOpen(p=>!p),
+      style:{width:'100%',background:'none',border:'none',padding:0,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',fontWeight:700,fontSize:13}
+    },
+      React.createElement('span',null,
+        React.createElement('i',{className:'ti ti-table',style:{marginRight:6}}),
+        `テーブルレシート管理（${tables.length}件・${byDate.length}日分）`
+      ),
+      React.createElement('i',{className:`ti ti-chevron-${open?'up':'down'}`,style:{color:'var(--text3)'}})
+    ),
+    open&&React.createElement('div',{style:{marginTop:12}},
+      /* 日付別リスト */
+      byDate.map(([date,rows])=>React.createElement('div',{key:date,style:{marginBottom:10,border:'0.5px solid var(--border)',borderRadius:'var(--r)',overflow:'hidden'}},
+        /* 日付ヘッダー */
+        React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',background:'var(--surface2)',borderBottom:'0.5px solid var(--border)'}},
+          React.createElement('span',{style:{fontSize:12,fontWeight:700}},`${date}（${rows.length}組）`),
+          React.createElement('button',{
+            onClick:()=>delByDate(date),
+            style:{fontSize:11,padding:'2px 8px',color:'var(--red)',background:'#fee2e2',border:'0.5px solid #fca5a5',borderRadius:4,cursor:'pointer'}
+          },'この日を削除')
+        ),
+        /* テーブル行 */
+        rows.map(t=>React.createElement('div',{key:t.id,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 10px',borderBottom:'0.5px solid var(--border)',fontSize:12}},
+          React.createElement('div',null,
+            React.createElement('span',{style:{fontWeight:600,marginRight:8}},t.seat||'—'),
+            React.createElement('span',{style:{color:'var(--text2)',marginRight:8}},t.time||''),
+            React.createElement('span',null,`${t.covers||0}名`),
+            t.drinkTotal>0&&React.createElement('span',{style:{color:'var(--blue)',marginLeft:8}},`D¥${fmt(t.drinkTotal)}`),
+            t.drinkCount>0&&React.createElement('span',{style:{color:'var(--text2)',marginLeft:6}},`${t.drinkCount}杯`)
+          ),
+          React.createElement('button',{
+            onClick:()=>delById(t.id),
+            style:{fontSize:11,padding:'2px 6px',color:'var(--red)',background:'none',border:'0.5px solid #fca5a5',borderRadius:4,cursor:'pointer'}
+          },'×')
+        ))
+      )),
+      /* 全件削除（要入力確認） */
+      React.createElement('div',{style:{marginTop:12,padding:'10px 12px',background:'#fff5f5',border:'0.5px solid #fca5a5',borderRadius:'var(--r)'}},
+        React.createElement('div',{style:{fontSize:12,fontWeight:700,color:'var(--red)',marginBottom:6}},
+          React.createElement('i',{className:'ti ti-alert-triangle',style:{marginRight:4}}),'全件削除'
+        ),
+        React.createElement('div',{style:{fontSize:11,color:'var(--text2)',marginBottom:8}},
+          `「削除」と入力して実行すると全${tables.length}件が削除されます（復元不可）`
+        ),
+        React.createElement('div',{style:{display:'flex',gap:8}},
+          React.createElement('input',{
+            type:'text',value:confirmAll,onChange:e=>setConfirmAll(e.target.value),
+            placeholder:'削除　と入力',
+            style:{flex:1,fontSize:12}
+          }),
+          React.createElement('button',{
+            onClick:delAll,disabled:confirmAll!=='削除',
+            style:{padding:'6px 12px',background:confirmAll==='削除'?'var(--red)':'#e5e7eb',color:confirmAll==='削除'?'#fff':'var(--text3)',border:'none',borderRadius:'var(--r)',cursor:confirmAll==='削除'?'pointer':'not-allowed',fontWeight:600,fontSize:12,flexShrink:0}
+          },'全件削除')
+        )
+      )
+    )
+  );
+}
+
+/* ── App ── */
+function App(){
+  const [data,setData]=useState(loadData);
+  const [apiKey,setApiKey]=useState(loadKey);
+  const [tab,setTab]=useState('today');
+  const [goal,setGoal]=useState(loadGoal);
+  const [config,setConfigState]=useState(loadConfig);
+  const [autoMsg,setAutoMsg]=useState('');
+  const setConfig=c=>{saveConfig(c);setConfigState(c);};
+  useEffect(()=>{saveData(data)},[data]);
+  /* 起動時にGAS URLが設定済みならバックグラウンドで自動インポート */
+  useEffect(()=>{
+    const gasUrl=localStorage.getItem(GAS_URL_KEY)||DEFAULT_GAS_URL;
+    if(!gasUrl)return;
+    setAutoMsg('sync');
+    fetch(gasUrl)
+      .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(rows=>{
+        const imported=convertSheetsRows(rows);
+        if(!imported.length){setAutoMsg('');return;}
+        applyImport(imported,setData);
+        setAutoMsg(`✓ ${imported.length}件 更新`);
+        setTimeout(()=>setAutoMsg(''),4000);
+      })
+      .catch(()=>setAutoMsg(''));/* 失敗は無視 */
+  },[]);
+  const tabs=[{id:'today',label:'今日',icon:'ti-home'},{id:'reports',label:'レポート',icon:'ti-chart-bar'},{id:'past',label:'過去入力',icon:'ti-calendar-plus'},{id:'settings',label:'設定',icon:'ti-settings'}];
+  return React.createElement('div',null,
+    React.createElement(ApiBar,{apiKey,setApiKey}),
+    React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}},
+      React.createElement('div',null,
+        React.createElement('h1',{style:{fontSize:19,fontWeight:700,letterSpacing:'-0.02em',display:'flex',alignItems:'center',gap:7}},
+          React.createElement('i',{className:'ti ti-glass-full',style:{fontSize:20,color:'var(--blue)'}}),
+          'ドリンク売上トラッカー'
+        ),
+        React.createElement('p',{style:{fontSize:11,color:'var(--text3)',marginTop:2}},(()=>{
+          const zDays=(data.days||[]).length;
+          const tDates=new Set((data.tables||[]).map(t=>t.date));
+          (data.days||[]).forEach(d=>tDates.delete(d.date));
+          const tOnlyDays=tDates.size;
+          if(tOnlyDays>0)return`累計 ${zDays}日分のデータ（+テーブルのみ${tOnlyDays}日）`;
+          return`累計 ${zDays}日分のデータ`;
+        })())
+      ),
+      /* 自動インポートステータス */
+      autoMsg&&React.createElement('div',{style:{fontSize:11,display:'flex',alignItems:'center',gap:5,color:autoMsg==='sync'?'var(--text3)':'var(--green)',padding:'4px 8px',background:autoMsg==='sync'?'var(--surface2)':'#f0fdf4',borderRadius:20,border:'0.5px solid',borderColor:autoMsg==='sync'?'var(--border)':'#86efac'}},
+        autoMsg==='sync'
+          ?[React.createElement('i',{key:'i',className:'ti ti-loader spin',style:{fontSize:12}}),'Sheets同期中...']
+          :[React.createElement('i',{key:'i',className:'ti ti-cloud-check',style:{fontSize:12}}),autoMsg]
+      )
+    ),
+    React.createElement('div',{className:'nav-tabs'},
+      tabs.map(t=>React.createElement('button',{key:t.id,className:`nav-tab${tab===t.id?' active':''}`,onClick:()=>setTab(t.id)},
+        React.createElement('i',{className:`ti ${t.icon}`,style:{fontSize:14}}),t.label
+      ))
+    ),
+    tab==='today'&&React.createElement(TodayScreen,{apiKey,data,setData,goal,setGoal}),
+    tab==='reports'&&React.createElement(Reports,{data,setData,goal,config}),
+    tab==='past'&&React.createElement(PastEntry,{apiKey,data,setData}),
+    tab==='settings'&&React.createElement('div',null,
+      React.createElement(MasterSettings,{apiKey,config,setConfig}),
+      /* Google Sheetsインポート */
+      React.createElement(SheetsImport,{data,setData}),
+      /* テーブルレシート個別管理 */
+      React.createElement(TableManager,{data,setData}),
+      /* データバックアップ */
+      React.createElement('div',{className:'card',style:{marginTop:16,background:'#fef9ef',border:'0.5px solid #fbbf24'}},
+        React.createElement('div',{style:{fontSize:13,fontWeight:700,marginBottom:10,color:'#92400e'}},
+          React.createElement('i',{className:'ti ti-database-export',style:{marginRight:6}}),'データバックアップ・復元'
+        ),
+        React.createElement('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:10}},
+          `現在のデータ: Zレポート ${(data.days||[]).length}日分 / テーブルレシート ${(data.tables||[]).length}件`
+        ),
+        React.createElement('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+          React.createElement('button',{
+            onClick:()=>{
+              const json=JSON.stringify({...data,exportedAt:new Date().toISOString()},null,2);
+              const blob=new Blob([json],{type:'application/json'});
+              const url=URL.createObjectURL(blob);
+              const a=document.createElement('a');
+              a.href=url;a.download=`drink_tracker_backup_${today()}.json`;
+              a.click();URL.revokeObjectURL(url);
+            },
+            style:{padding:'7px 12px',background:'#f59e0b',color:'#fff',border:'none',borderRadius:'var(--r)',fontWeight:600,cursor:'pointer',fontSize:12}},
+            React.createElement('i',{className:'ti ti-download',style:{marginRight:4}}),'バックアップ保存'
+          ),
+          React.createElement('label',{style:{padding:'7px 12px',background:'var(--surface2)',border:'0.5px solid var(--border2)',borderRadius:'var(--r)',cursor:'pointer',fontSize:12,fontWeight:600}},
+            React.createElement('i',{className:'ti ti-upload',style:{marginRight:4}}),'バックアップ復元',
+            React.createElement('input',{type:'file',accept:'.json',style:{display:'none'},
+              onChange:e=>{
+                const f=e.target.files[0];if(!f)return;
+                const reader=new FileReader();
+                reader.onload=ev=>{
+                  try{
+                    const d=JSON.parse(ev.target.result);
+                    if(!d||typeof d!=='object')throw new Error('無効なファイル');
+                    if(window.confirm(`バックアップから復元しますか？\n現在のデータは上書きされます。\n\n含まれるデータ:\nZレポート ${(d.days||[]).length}日分\nテーブルレシート ${(d.tables||[]).length}件`)){
+                      setData({tables:d.tables||[],days:d.days||[]});
+                      alert('復元しました');
+                    }
+                  }catch(err){alert('ファイルの読み込みに失敗しました: '+err.message);}
+                };
+                reader.readAsText(f);
+                e.target.value='';
+              }
+            })
+          )
+        )
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
