@@ -1181,6 +1181,7 @@ function Reports({data,setData,goal,config}){
           {l:'1人D売上（税抜）',v:`¥${fmt(summary.drinkPerCover,0)}`,c:'var(--blue)',sub:goal?React.createElement('div',{className:'metric-sub',style:{color:dpcSubColor}},`目標比 ${dpcPct}%`,dpcDiff>=0?` (▲¥${fmt(dpcDiff)})`:` (▼¥${fmt(-dpcDiff)})`):null},
           {l:'DR比率',v:`${fmt(summary.drinkRatio*100,1)}%`,c:summary.drinkRatio>=0.3?'var(--green)':'var(--amber)'},
           {l:'日平均DR売上',v:`¥${fmt(summary.avgDaily,0)}`},
+          ...(summary.drinksPerCover!==null?[{l:'1人D杯数',v:`${fmt(summary.drinksPerCover,1)}杯`,c:'var(--blue)'}]:[]),
           ...(summary.avgDrinkPrice!==null?[{l:'平均D単価（税抜）',v:`¥${fmt(summary.avgDrinkPrice,0)}`,c:'var(--blue)'}]:[]),
         ];
         return React.createElement('div',null,
@@ -1188,12 +1189,6 @@ function Reports({data,setData,goal,config}){
           React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:8}},row2.map(mkCard))
         );
       })(),
-      summary.drinksPerCover!==null&&React.createElement('div',{style:{marginTop:8}},
-        React.createElement('div',{className:'metric-card',style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px'}},
-          React.createElement('span',{style:{fontSize:12,color:'var(--text2)'}},'1人D杯数（テーブルデータより）'),
-          React.createElement('span',{style:{fontSize:16,fontWeight:700,color:'var(--blue)'}},`${fmt(summary.drinksPerCover,1)}杯`)
-        )
-      ),
       ldFiltered&&(()=>{
         const{lunch:lf,dinner:df,source}=ldFiltered;
         const totalCovers=(lf.covers||0)+(df.covers||0);
