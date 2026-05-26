@@ -1856,6 +1856,7 @@ function PastEntry({apiKey,data,setData}){
         :(prev.tables||[]);
       return{...prev,days,tables};
     });
+    if(extractedTables.length) extractedTables.forEach(t=>postTableToGas(t));
     setSaved(true);setImg(null);setImgB64(null);setResult(null);setFileName('');
   };
 
