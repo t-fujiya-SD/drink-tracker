@@ -793,6 +793,115 @@ function AchievementBanner({drinkPerCover,goal,provisional}){
   );
 }
 
+/* ── 具体施策カード ── */
+const MEASURE_PRESETS=[
+  {label:'ランチドリンク杯数',unit:'杯'},
+  {label:'ディナードリンク杯数',unit:'杯'},
+  {label:'おすすめドリンク出数',unit:'オーダー'},
+  {label:'DR比率',unit:'%'},
+  {label:'1人D売上',unit:'円'},
+  {label:'テーブル杯数',unit:'杯'},
+  {label:'その他',unit:''},
+];
+function MeasuresCard({date,data,setData}){
+  const measures=(data.measures||{})[date]||[];
+  const setMeasures=fn=>{
+    setData(prev=>{
+      const cur=(prev.measures||{})[date]||[];
+      const next=typeof fn==='function'?fn(cur):fn;
+      return{...prev,measures:{...(prev.measures||{}),[date]:next}};
+    });
+  };
+  const [adding,setAdding]=useState(false);
+  const [newCat,setNewCat]=useState(MEASURE_PRESETS[0].label);
+  const [newUnit,setNewUnit]=useState(MEASURE_PRESETS[0].unit);
+  const [newTarget,setNewTarget]=useState('');
+  const [customCat,setCustomCat]=useState('');
+  const [customUnit,setCustomUnit]=useState('');
+
+  const addMeasure=()=>{
+    const cat=newCat==='その他'?customCat:newCat;
+    const unit=newCat==='その他'?customUnit:newUnit;
+    if(!cat||!newTarget)return;
+    setMeasures(prev=>[...prev,{id:uid(),category:cat,unit,target:parseFloat(newTarget),actual:null}]);
+    setAdding(false);setNewTarget('');setCustomCat('');setCustomUnit('');
+    setNewCat(MEASURE_PRESETS[0].label);setNewUnit(MEASURE_PRESETS[0].unit);
+  };
+  const updateActual=(id,val)=>setMeasures(prev=>prev.map(m=>m.id===id?{...m,actual:val===''?null:parseFloat(val)}:m));
+  const removeMeasure=id=>setMeasures(prev=>prev.filter(m=>m.id!==id));
+
+  return React.createElement('div',{className:'card',style:{marginBottom:12}},
+    React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:700,display:'flex',alignItems:'center',gap:6}},
+        React.createElement('i',{className:'ti ti-clipboard-list',style:{color:'var(--blue)'}}),
+        '本日の具体施策'
+      ),
+      React.createElement('button',{
+        onClick:()=>setAdding(a=>!a),
+        style:{padding:'4px 10px',fontSize:12,background:'var(--blue)',color:'#fff',border:'none',borderRadius:'var(--r)',cursor:'pointer',display:'flex',alignItems:'center',gap:4}
+      },React.createElement('i',{className:`ti ti-${adding?'x':'plus'}`}),adding?'キャンセル':'追加')
+    ),
+    /* 追加フォーム */
+    adding&&React.createElement('div',{style:{background:'var(--surface)',border:'0.5px solid var(--border)',borderRadius:'var(--r)',padding:12,marginBottom:10}},
+      React.createElement('div',{style:{marginBottom:8}},
+        React.createElement('div',{style:{fontSize:11,color:'var(--text2)',marginBottom:4}},'施策項目'),
+        React.createElement('select',{
+          value:newCat,
+          onChange:e=>{
+            setNewCat(e.target.value);
+            const p=MEASURE_PRESETS.find(p=>p.label===e.target.value);
+            if(p)setNewUnit(p.unit);
+          },
+          style:{width:'100%',padding:'6px 8px',fontSize:13,borderRadius:'var(--r)',border:'0.5px solid var(--border2)'}
+        },MEASURE_PRESETS.map(p=>React.createElement('option',{key:p.label,value:p.label},p.label)))
+      ),
+      newCat==='その他'&&React.createElement('div',{style:{display:'flex',gap:6,marginBottom:8}},
+        React.createElement('input',{type:'text',value:customCat,onChange:e=>setCustomCat(e.target.value),placeholder:'項目名',style:{flex:2,padding:'6px 8px',fontSize:13}}),
+        React.createElement('input',{type:'text',value:customUnit,onChange:e=>setCustomUnit(e.target.value),placeholder:'単位',style:{flex:1,padding:'6px 8px',fontSize:13}})
+      ),
+      React.createElement('div',{style:{display:'flex',gap:6,alignItems:'center'}},
+        React.createElement('div',{style:{fontSize:11,color:'var(--text2)',flexShrink:0}},'目標'),
+        React.createElement('input',{
+          type:'number',value:newTarget,onChange:e=>setNewTarget(e.target.value),
+          placeholder:'数値',style:{flex:1,padding:'6px 8px',fontSize:13}
+        }),
+        React.createElement('span',{style:{fontSize:12,color:'var(--text2)',flexShrink:0}},newCat==='その他'?customUnit:newUnit),
+        React.createElement('button',{
+          onClick:addMeasure,disabled:!newTarget||(newCat==='その他'&&!customCat),
+          style:{padding:'6px 14px',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'var(--r)',fontWeight:600,cursor:'pointer',opacity:(!newTarget||(newCat==='その他'&&!customCat))?0.4:1}
+        },'追加')
+      )
+    ),
+    /* 施策一覧 */
+    measures.length===0&&!adding&&React.createElement('div',{style:{fontSize:12,color:'var(--text3)',textAlign:'center',padding:'10px 0'}},
+      '「追加」ボタンから今日の施策を設定してください'
+    ),
+    measures.map(m=>{
+      const pct=m.actual!==null&&m.target>0?Math.round(m.actual/m.target*100):null;
+      const color=pct===null?'var(--text2)':pct>=100?'var(--green)':pct>=80?'var(--amber)':'#ef4444';
+      return React.createElement('div',{key:m.id,style:{display:'flex',alignItems:'center',gap:8,padding:'8px 0',borderTop:'0.5px solid var(--border)'}},
+        React.createElement('div',{style:{flex:1,minWidth:0}},
+          React.createElement('div',{style:{fontSize:12,fontWeight:600,marginBottom:2}},m.category),
+          React.createElement('div',{style:{fontSize:11,color:'var(--text2)'}},`目標: ${m.target}${m.unit}`)
+        ),
+        React.createElement('div',{style:{display:'flex',alignItems:'center',gap:4}},
+          React.createElement('input',{
+            type:'number',value:m.actual===null?'':m.actual,
+            onChange:e=>updateActual(m.id,e.target.value),
+            placeholder:'実績',
+            style:{width:60,padding:'4px 6px',fontSize:13,textAlign:'right'}
+          }),
+          React.createElement('span',{style:{fontSize:11,color:'var(--text2)',flexShrink:0}},m.unit)
+        ),
+        pct!==null&&React.createElement('div',{style:{fontSize:13,fontWeight:700,color,minWidth:36,textAlign:'right'}},`${pct}%`),
+        React.createElement('button',{onClick:()=>removeMeasure(m.id),style:{padding:'2px 6px',fontSize:11,color:'var(--text3)',flexShrink:0}},
+          React.createElement('i',{className:'ti ti-x'})
+        )
+      );
+    })
+  );
+}
+
 /* ── Today Screen ── */
 function TodayScreen({apiKey,data,setData,goal,setGoal}){
   const [mode,setMode]=useState('table');
@@ -821,6 +930,7 @@ function TodayScreen({apiKey,data,setData,goal,setGoal}){
 
   if(dayData) return React.createElement('div',null,
     React.createElement(GoalBar,{goal,setGoal}),
+    React.createElement(MeasuresCard,{date:dateStr,data,setData}),
     React.createElement(AchievementBanner,{drinkPerCover:dayData.drinkPerCover,goal}),
     React.createElement('div',{className:'card',style:{background:'#f0fdf4',borderColor:'#86efac',marginBottom:12}},
       React.createElement('div',{style:{fontSize:14,fontWeight:700,color:'var(--green)',marginBottom:8}},
@@ -855,6 +965,7 @@ function TodayScreen({apiKey,data,setData,goal,setGoal}){
 
   return React.createElement('div',null,
     React.createElement(GoalBar,{goal,setGoal}),
+    React.createElement(MeasuresCard,{date:dateStr,data,setData}),
     React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
       React.createElement('div',{style:{fontSize:14,fontWeight:700}},new Date().toLocaleDateString('ja-JP',{month:'long',day:'numeric',weekday:'short'})),
       React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
@@ -913,16 +1024,19 @@ function Reports({data,setData,goal,config}){
   const fmtD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const [selDay,setSelDay]=useState(()=>{const d=new Date();d.setDate(d.getDate()-1);return fmtD(d);});
 
-  /* Zレポートのない日のテーブルデータから「仮の日次レコード」を生成 */
-  const tableDays=useMemo(()=>{
-    const zDates=new Set((data.days||[]).map(d=>d.date));
-    /* 重複除去: date+seat+time が同じレコードは1件のみ残す */
+  /* 重複除去済みテーブルデータ（全計算で共通使用） */
+  const uniqueTables=useMemo(()=>{
     const seen=new Set();
-    const uniqueTables=(data.tables||[]).filter(t=>{
+    return (data.tables||[]).filter(t=>{
       const key=`${t.date}|${t.seat||''}|${(t.time||'').slice(0,5)}`;
       if(seen.has(key))return false;
       seen.add(key);return true;
     });
+  },[data.tables]);
+
+  /* Zレポートのない日のテーブルデータから「仮の日次レコード」を生成 */
+  const tableDays=useMemo(()=>{
+    const zDates=new Set((data.days||[]).map(d=>d.date));
     const map={};
     uniqueTables.forEach(t=>{
       if(zDates.has(t.date))return; /* Zレポートがある日はスキップ */
@@ -969,12 +1083,12 @@ function Reports({data,setData,goal,config}){
     return DAYS.map(d=>({dow:d,avg:map[d].count>0?map[d].total/map[d].count:0,count:map[d].count}));
   },[days]);
 
-  /* テーブルレコードを日付でインデックス化 */
+  /* テーブルレコードを日付でインデックス化（重複除去済み） */
   const tablesByDate=useMemo(()=>{
     const map={};
-    (data.tables||[]).forEach(t=>{if(!map[t.date])map[t.date]=[];map[t.date].push(t);});
+    uniqueTables.forEach(t=>{if(!map[t.date])map[t.date]=[];map[t.date].push(t);});
     return map;
-  },[data.tables]);
+  },[uniqueTables]);
 
   const getDrinkCount=date=>{
     // テーブルレシートから集計（drinks配列 or drinkCount フィールドどちらも対応）
@@ -1009,7 +1123,7 @@ function Reports({data,setData,goal,config}){
   const ldFiltered=useMemo(()=>{
     if(!filtered.length)return null;
     const dates=new Set(filtered.map(d=>d.date));
-    const tables=(data.tables||[]).filter(t=>dates.has(t.date));
+    const tables=uniqueTables.filter(t=>dates.has(t.date));
     const isLunch=t=>(t.time||'00:00')>='10:00'&&(t.time||'00:00')<'17:00';
     const tDC=t=>(t.drinks||[]).length>0?(t.drinks||[]).reduce((ss,d)=>ss+(d.qty||0),0):(t.drinkCount||0);
     const agg=arr=>({
