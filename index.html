@@ -906,6 +906,8 @@ function Reports({data,setData,goal,config}){
   const [period,setPeriod]=useState('weekly');
   const [rs,setRs]=useState('');
   const [re,setRe]=useState('');
+  const [pendingRs,setPendingRs]=useState('');
+  const [pendingRe,setPendingRe]=useState('');
   const [weekOffset,setWeekOffset]=useState(0); /* 0=今週, -1=先週, … */
   const [expandedSeat,setExpandedSeat]=useState(null);
   const fmtD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -914,8 +916,15 @@ function Reports({data,setData,goal,config}){
   /* Zレポートのない日のテーブルデータから「仮の日次レコード」を生成 */
   const tableDays=useMemo(()=>{
     const zDates=new Set((data.days||[]).map(d=>d.date));
+    /* 重複除去: date+seat+time が同じレコードは1件のみ残す */
+    const seen=new Set();
+    const uniqueTables=(data.tables||[]).filter(t=>{
+      const key=`${t.date}|${t.seat||''}|${(t.time||'').slice(0,5)}`;
+      if(seen.has(key))return false;
+      seen.add(key);return true;
+    });
     const map={};
-    (data.tables||[]).forEach(t=>{
+    uniqueTables.forEach(t=>{
       if(zDates.has(t.date))return; /* Zレポートがある日はスキップ */
       if(!map[t.date])map[t.date]=[];
       map[t.date].push(t);
@@ -1142,11 +1151,24 @@ function Reports({data,setData,goal,config}){
           React.createElement('i',{className:'ti ti-chevron-right'})
         )
       ),
-      (period==='custom'||period==='ld'||period==='seat')&&React.createElement('div',{style:{display:'flex',gap:6,alignItems:'center',marginTop:8}},
-        React.createElement('input',{type:'date',value:rs,onChange:e=>setRs(e.target.value),style:{flex:1},placeholder:'開始日'}),
-        React.createElement('span',{style:{color:'var(--text3)'}},'〜'),
-        React.createElement('input',{type:'date',value:re,onChange:e=>setRe(e.target.value),style:{flex:1},placeholder:'終了日'}),
-        (rs||re)&&React.createElement('button',{onClick:()=>{setRs('');setRe('');},style:{padding:'6px 8px',fontSize:11,color:'var(--text2)',flexShrink:0}},'直近7日')
+      (period==='custom'||period==='ld'||period==='seat')&&React.createElement('div',{style:{marginTop:8}},
+        React.createElement('div',{style:{display:'flex',gap:6,alignItems:'center',marginBottom:6}},
+          React.createElement('input',{type:'date',value:pendingRs,onChange:e=>setPendingRs(e.target.value),style:{flex:1},placeholder:'開始日'}),
+          React.createElement('span',{style:{color:'var(--text3)'}},'〜'),
+          React.createElement('input',{type:'date',value:pendingRe,onChange:e=>setPendingRe(e.target.value),style:{flex:1},placeholder:'終了日'})
+        ),
+        React.createElement('div',{style:{display:'flex',gap:6}},
+          React.createElement('button',{
+            onClick:()=>{setRs(pendingRs);setRe(pendingRe);},
+            disabled:!pendingRs||!pendingRe,
+            style:{flex:2,background:'var(--blue)',color:'#fff',border:'none',fontWeight:600,padding:'8px',borderRadius:'var(--r)',cursor:'pointer',opacity:(!pendingRs||!pendingRe)?0.4:1}
+          },React.createElement('i',{className:'ti ti-search',style:{marginRight:4}}),'この期間で集計'),
+          React.createElement('button',{
+            onClick:()=>{setPendingRs('');setPendingRe('');setRs('');setRe('');},
+            style:{flex:1,padding:'8px',fontSize:11,color:'var(--text2)'}
+          },'直近7日')
+        ),
+        rs&&re&&React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginTop:4}},`集計中: ${rs} 〜 ${re}`)
       )
     ),
     /* 日次：データなし */
@@ -2367,7 +2389,7 @@ function SheetsImport({data,setData,autoStatus}){
 }
 
 /* ── GAS一括同期 ── */
-function GasBulkSync({data}){
+function GasBulkSync({data,setData}){
   const [status,setStatus]=useState('');
   const [running,setRunning]=useState(false);
 
@@ -2386,6 +2408,20 @@ function GasBulkSync({data}){
     setStatus(`✓ ${ok}件をGASに送信しました。スマホで「取り込む」を押してください。`);
   };
 
+  const dedup=()=>{
+    const seen=new Set();
+    const before=(data.tables||[]).length;
+    const unique=(data.tables||[]).filter(t=>{
+      const key=`${t.date}|${t.seat||''}|${(t.time||'').slice(0,5)}|${t.drinkTotal||0}`;
+      if(seen.has(key))return false;
+      seen.add(key);return true;
+    });
+    if(unique.length===before){setStatus('重複なし（変更なし）');return;}
+    if(!window.confirm(`重複${before-unique.length}件を削除します（${before}→${unique.length}件）。よろしいですか？`))return;
+    setData(prev=>({...prev,tables:unique}));
+    setStatus(`✓ 重複${before-unique.length}件を削除しました（${unique.length}件に整理）`);
+  };
+
   return React.createElement('div',{className:'card',style:{marginTop:16,background:'#fff7ed',border:'0.5px solid #fed7aa'}},
     React.createElement('div',{style:{fontSize:13,fontWeight:700,marginBottom:8,color:'#c2410c'}},
       React.createElement('i',{className:'ti ti-cloud-upload',style:{marginRight:6}}),'既存データをGASに同期'
@@ -2393,10 +2429,16 @@ function GasBulkSync({data}){
     React.createElement('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:10}},
       `ローカルに保存済みの ${(data.tables||[]).length}件 をGASスプレッドシートに送信します`
     ),
-    React.createElement('button',{
-      onClick:doSync,disabled:running,
-      style:{background:'#ea580c',color:'#fff',border:'none',fontWeight:600,padding:'8px 16px',borderRadius:'var(--r)',cursor:'pointer'}
-    },running?React.createElement('i',{className:'ti ti-loader spin'}):'一括同期する'),
+    React.createElement('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+      React.createElement('button',{
+        onClick:doSync,disabled:running,
+        style:{background:'#ea580c',color:'#fff',border:'none',fontWeight:600,padding:'8px 16px',borderRadius:'var(--r)',cursor:'pointer'}
+      },running?React.createElement('i',{className:'ti ti-loader spin'}):'一括同期する'),
+      React.createElement('button',{
+        onClick:dedup,disabled:running,
+        style:{background:'var(--surface2)',border:'0.5px solid var(--border2)',fontWeight:600,padding:'8px 12px',borderRadius:'var(--r)',cursor:'pointer',fontSize:12}
+      },React.createElement('i',{className:'ti ti-filter',style:{marginRight:4}}),'重複データを削除')
+    ),
     status&&React.createElement('div',{style:{fontSize:12,marginTop:8,color:status.startsWith('✓')?'var(--green)':'var(--text2)'}},status)
   );
 }
@@ -2590,7 +2632,7 @@ function App(){
     tab==='past'&&React.createElement(PastTab,{apiKey,data,setData}),
     tab==='settings'&&adminOpen&&React.createElement('div',null,
       /* GAS一括同期 */
-      React.createElement(GasBulkSync,{data}),
+      React.createElement(GasBulkSync,{data,setData}),
       /* Google Sheetsインポート */
       React.createElement(SheetsImport,{data,setData}),
       React.createElement(MasterSettings,{apiKey,config,setConfig}),
