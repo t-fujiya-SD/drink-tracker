@@ -811,11 +811,19 @@ function MeasuresCard({date,data,setData}){
       return{...prev,measures:{...(prev.measures||{}),[date]:next}};
     });
   };
+  /* 既存テーブルデータからドリンク名一覧を抽出 */
+  const drinkMenuList=useMemo(()=>{
+    const names=new Set();
+    (data.tables||[]).forEach(t=>(t.drinks||[]).forEach(d=>{if(d.name)names.add(d.name);}));
+    return [...names].sort((a,b)=>a.localeCompare(b,'ja'));
+  },[data.tables]);
+
   const [adding,setAdding]=useState(false);
   const [newCat,setNewCat]=useState(MEASURE_PRESETS[0].label);
   const [newUnit,setNewUnit]=useState(MEASURE_PRESETS[0].unit);
   const [newTarget,setNewTarget]=useState('');
   const [newProductName,setNewProductName]=useState('');
+  const [newProductCustom,setNewProductCustom]=useState('');
   const [customCat,setCustomCat]=useState('');
   const [customUnit,setCustomUnit]=useState('');
 
@@ -823,9 +831,11 @@ function MeasuresCard({date,data,setData}){
     const cat=newCat==='その他'?customCat:newCat;
     const unit=newCat==='その他'?customUnit:newUnit;
     if(!cat||!newTarget)return;
-    const extra=newCat==='おすすめドリンク出数'&&newProductName?{productName:newProductName}:{};
+    const resolvedProduct=newProductName==='__custom__'?newProductCustom:newProductName;
+    const extra=newCat==='おすすめドリンク出数'&&resolvedProduct?{productName:resolvedProduct}:{};
     setMeasures(prev=>[...prev,{id:uid(),category:cat,unit,target:parseFloat(newTarget),actual:null,...extra}]);
-    setAdding(false);setNewTarget('');setCustomCat('');setCustomUnit('');setNewProductName('');
+    setAdding(false);setNewTarget('');setCustomCat('');setCustomUnit('');
+    setNewProductName('');setNewProductCustom('');
     setNewCat(MEASURE_PRESETS[0].label);setNewUnit(MEASURE_PRESETS[0].unit);
   };
   const updateActual=(id,val)=>setMeasures(prev=>prev.map(m=>m.id===id?{...m,actual:val===''?null:parseFloat(val)}:m));
@@ -862,10 +872,21 @@ function MeasuresCard({date,data,setData}){
       ),
       newCat==='おすすめドリンク出数'&&React.createElement('div',{style:{marginBottom:8}},
         React.createElement('div',{style:{fontSize:11,color:'var(--text2)',marginBottom:4}},'商品名'),
-        React.createElement('input',{
-          type:'text',value:newProductName,onChange:e=>setNewProductName(e.target.value),
-          placeholder:'例: 本日のおすすめワイン',
-          style:{width:'100%',padding:'6px 8px',fontSize:13,boxSizing:'border-box'}
+        React.createElement('select',{
+          value:newProductName,
+          onChange:e=>setNewProductName(e.target.value),
+          style:{width:'100%',padding:'6px 8px',fontSize:13,borderRadius:'var(--r)',border:'0.5px solid var(--border2)',boxSizing:'border-box'}
+        },
+          [
+            React.createElement('option',{key:'',value:''},'-- 選択してください --'),
+            ...drinkMenuList.map(n=>React.createElement('option',{key:n,value:n},n)),
+            React.createElement('option',{key:'__custom__',value:'__custom__'},'その他（手入力）')
+          ]
+        ),
+        newProductName==='__custom__'&&React.createElement('input',{
+          type:'text',value:newProductCustom,onChange:e=>setNewProductCustom(e.target.value),
+          placeholder:'商品名を入力',
+          style:{width:'100%',padding:'6px 8px',fontSize:13,marginTop:6,boxSizing:'border-box'}
         })
       ),
       React.createElement('div',{style:{display:'flex',gap:6,alignItems:'center'}},
