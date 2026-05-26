@@ -2366,6 +2366,41 @@ function SheetsImport({data,setData,autoStatus}){
   );
 }
 
+/* ── GAS一括同期 ── */
+function GasBulkSync({data}){
+  const [status,setStatus]=useState('');
+  const [running,setRunning]=useState(false);
+
+  const doSync=async()=>{
+    const tables=(data.tables||[]);
+    if(!tables.length){setStatus('同期するデータがありません');return;}
+    setRunning(true);setStatus('');
+    let ok=0;
+    for(let i=0;i<tables.length;i++){
+      await postTableToGas(tables[i]);
+      ok++;
+      setStatus(`送信中... ${ok}/${tables.length}`);
+      if(i<tables.length-1)await new Promise(r=>setTimeout(r,300));
+    }
+    setRunning(false);
+    setStatus(`✓ ${ok}件をGASに送信しました。スマホで「取り込む」を押してください。`);
+  };
+
+  return React.createElement('div',{className:'card',style:{marginTop:16,background:'#fff7ed',border:'0.5px solid #fed7aa'}},
+    React.createElement('div',{style:{fontSize:13,fontWeight:700,marginBottom:8,color:'#c2410c'}},
+      React.createElement('i',{className:'ti ti-cloud-upload',style:{marginRight:6}}),'既存データをGASに同期'
+    ),
+    React.createElement('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:10}},
+      `ローカルに保存済みの ${(data.tables||[]).length}件 をGASスプレッドシートに送信します`
+    ),
+    React.createElement('button',{
+      onClick:doSync,disabled:running,
+      style:{background:'#ea580c',color:'#fff',border:'none',fontWeight:600,padding:'8px 16px',borderRadius:'var(--r)',cursor:'pointer'}
+    },running?React.createElement('i',{className:'ti ti-loader spin'}):'一括同期する'),
+    status&&React.createElement('div',{style:{fontSize:12,marginTop:8,color:status.startsWith('✓')?'var(--green)':'var(--text2)'}},status)
+  );
+}
+
 /* ── TableManager（テーブルデータ個別削除） ── */
 function TableManager({data,setData}){
   const [open,setOpen]=useState(false);
@@ -2523,6 +2558,8 @@ function App(){
       React.createElement(MasterSettings,{apiKey,config,setConfig}),
       /* Google Sheetsインポート */
       React.createElement(SheetsImport,{data,setData}),
+      /* GAS一括同期 */
+      React.createElement(GasBulkSync,{data}),
       /* テーブルレシート個別管理 */
       React.createElement(TableManager,{data,setData}),
       /* データバックアップ */
