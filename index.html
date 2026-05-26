@@ -2521,9 +2521,43 @@ function App(){
       })
       .catch(()=>setAutoMsg(''));/* 失敗は無視 */
   },[]);
+  const [adminOpen,setAdminOpen]=useState(false);
+  const [pinInput,setPinInput]=useState('');
+  const [pinModal,setPinModal]=useState(false);
+  const [pinErr,setPinErr]=useState(false);
+  const openAdmin=()=>{setPinInput('');setPinErr(false);setPinModal(true);};
+  const submitPin=()=>{
+    if(pinInput==='9999'){setPinModal(false);setAdminOpen(true);setTab('settings');}
+    else{setPinErr(true);setPinInput('');}
+  };
   const tabs=[{id:'today',label:'今日',icon:'ti-home'},{id:'reports',label:'レポート',icon:'ti-chart-bar'},{id:'past',label:'過去入力',icon:'ti-calendar-plus'},{id:'settings',label:'設定',icon:'ti-settings'}];
+  const handleTabClick=id=>{
+    if(id==='settings'&&!adminOpen){setPinInput('');setPinErr(false);setPinModal(true);}
+    else setTab(id);
+  };
   return React.createElement('div',null,
     React.createElement(ApiBar,{apiKey,setApiKey}),
+    /* PINモーダル */
+    pinModal&&React.createElement('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'},onClick:()=>setPinModal(false)},
+      React.createElement('div',{style:{background:'var(--bg)',borderRadius:16,padding:24,width:280,boxShadow:'0 8px 32px rgba(0,0,0,0.2)'},onClick:e=>e.stopPropagation()},
+        React.createElement('div',{style:{fontSize:15,fontWeight:700,marginBottom:4,textAlign:'center'}},
+          React.createElement('i',{className:'ti ti-lock',style:{marginRight:6,color:'var(--blue)'}}),'管理者コードを入力'
+        ),
+        React.createElement('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:16,textAlign:'center'}},'管理者のみアクセスできます'),
+        React.createElement('input',{
+          type:'password',value:pinInput,
+          onChange:e=>setPinInput(e.target.value),
+          onKeyDown:e=>e.key==='Enter'&&submitPin(),
+          placeholder:'コードを入力',autoFocus:true,
+          style:{width:'100%',textAlign:'center',fontSize:20,letterSpacing:8,padding:'10px',marginBottom:8,boxSizing:'border-box'}
+        }),
+        pinErr&&React.createElement('div',{style:{fontSize:12,color:'var(--red)',textAlign:'center',marginBottom:8}},'コードが違います'),
+        React.createElement('div',{style:{display:'flex',gap:8}},
+          React.createElement('button',{onClick:()=>{setPinModal(false);setTab('today');},style:{flex:1,padding:'9px',background:'var(--surface2)',border:'0.5px solid var(--border2)',borderRadius:'var(--r)',cursor:'pointer'}},'キャンセル'),
+          React.createElement('button',{onClick:submitPin,style:{flex:1,padding:'9px',background:'var(--blue)',color:'#fff',border:'none',borderRadius:'var(--r)',fontWeight:600,cursor:'pointer'}},'確認')
+        )
+      )
+    ),
     React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}},
       React.createElement('div',null,
         React.createElement('h1',{style:{fontSize:19,fontWeight:700,letterSpacing:'-0.02em',display:'flex',alignItems:'center',gap:7}},
@@ -2547,19 +2581,19 @@ function App(){
       )
     ),
     React.createElement('div',{className:'nav-tabs'},
-      tabs.map(t=>React.createElement('button',{key:t.id,className:`nav-tab${tab===t.id?' active':''}`,onClick:()=>setTab(t.id)},
+      tabs.map(t=>React.createElement('button',{key:t.id,className:`nav-tab${tab===t.id?' active':''}`,onClick:()=>handleTabClick(t.id)},
         React.createElement('i',{className:`ti ${t.icon}`,style:{fontSize:14}}),t.label
       ))
     ),
     tab==='today'&&React.createElement(TodayScreen,{apiKey,data,setData,goal,setGoal}),
     tab==='reports'&&React.createElement(Reports,{data,setData,goal,config}),
     tab==='past'&&React.createElement(PastTab,{apiKey,data,setData}),
-    tab==='settings'&&React.createElement('div',null,
-      React.createElement(MasterSettings,{apiKey,config,setConfig}),
-      /* Google Sheetsインポート */
-      React.createElement(SheetsImport,{data,setData}),
+    tab==='settings'&&adminOpen&&React.createElement('div',null,
       /* GAS一括同期 */
       React.createElement(GasBulkSync,{data}),
+      /* Google Sheetsインポート */
+      React.createElement(SheetsImport,{data,setData}),
+      React.createElement(MasterSettings,{apiKey,config,setConfig}),
       /* テーブルレシート個別管理 */
       React.createElement(TableManager,{data,setData}),
       /* データバックアップ */
