@@ -139,8 +139,11 @@ function parsePosCSVByDate(text){
 }
 
 /* POS照合ビュー */
-function PosCompareView({data,setData}){
+function PosCompareView({data,setData,config}){
   const {useState,useMemo,useRef}=React;
+  /* 月次と同じ税抜・サービス料抜き換算 */
+  const netFactor=1/((1+((config&&config.taxRate)||0)/100)*(1+((config&&config.serviceRate)||0)/100));
+  const net=v=>Math.round((v||0)*netFactor);
   const [msg,setMsg]=useState('');
   const salesRef=useRef();
   const coversRef=useRef();
@@ -178,7 +181,9 @@ function PosCompareView({data,setData}){
     return[...dates].sort().map(date=>{
       const pos=posData[date]||{};
       const app=(data.days||[]).find(d=>d.date===date);
-      const sDiff=pos.sales!=null&&app?.totalSales!=null?app.totalSales-pos.sales:null;
+      /* アプリ側は月次と同じ税抜・サービス料抜きで比較 */
+      const appSales=app?.totalSales!=null?net(app.totalSales):null;
+      const sDiff=pos.sales!=null&&appSales!=null?appSales-pos.sales:null;
       const cDiff=pos.covers!=null&&app?.totalCovers!=null?app.totalCovers-pos.covers:null;
       const sPct=pos.sales>0&&sDiff!==null?Math.abs(sDiff/pos.sales*100):null;
       const status=pos.sales==null&&pos.covers==null?'apponly'
@@ -186,9 +191,9 @@ function PosCompareView({data,setData}){
         :sPct>10||Math.abs(cDiff||0)>5?'danger'
         :sPct>3||Math.abs(cDiff||0)>2?'warn'
         :'ok';
-      return{date,pos,app,sDiff,cDiff,sPct,status};
+      return{date,pos,app,appSales,sDiff,cDiff,sPct,status};
     });
-  },[posData,data.days]);
+  },[posData,data.days,netFactor]);
 
   const counts={ok:rows.filter(r=>r.status==='ok').length,warn:rows.filter(r=>r.status==='warn').length,danger:rows.filter(r=>r.status==='danger').length,noapp:rows.filter(r=>r.status==='noapp').length};
 
@@ -228,7 +233,7 @@ function PosCompareView({data,setData}){
         React.createElement('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:11}},
           React.createElement('thead',null,
             React.createElement('tr',{style:{background:'var(--surface2)',borderBottom:'1px solid var(--border)'}},
-              ['日付','','POS売上','アプリ売上','差額','POS客数','アプリ客数','差'].map((h,i)=>
+              ['日付','','POS売上','アプリ売上(税抜)','差額','POS客数','アプリ客数','差'].map((h,i)=>
                 React.createElement('th',{key:i,style:{padding:'8px 6px',textAlign:i>=2?'right':'left',fontWeight:600,color:'var(--text2)',whiteSpace:'nowrap'}},h)
               )
             )
@@ -243,7 +248,7 @@ function PosCompareView({data,setData}){
                 React.createElement('td',{style:{padding:'7px 6px',fontWeight:600,whiteSpace:'nowrap'}},weekLabel(date)),
                 React.createElement('td',{style:{padding:'7px 4px',color:iconC,fontWeight:700,fontSize:13}},icon),
                 React.createElement('td',{style:{padding:'7px 6px',textAlign:'right'}},pos.sales!=null?`¥${fmt(pos.sales)}`:'—'),
-                React.createElement('td',{style:{padding:'7px 6px',textAlign:'right',color:status==='noapp'?'var(--text3)':'inherit'}},app?.totalSales!=null?`¥${fmt(app.totalSales)}`:'未入力'),
+                React.createElement('td',{style:{padding:'7px 6px',textAlign:'right',color:status==='noapp'?'var(--text3)':'inherit'}},appSales!=null?`¥${fmt(appSales)}`:'未入力'),
                 React.createElement('td',{style:{padding:'7px 6px',textAlign:'right',fontWeight:600,color:diffC(sDiff)}},sDiff!=null?`${sDiff>=0?'+':''}¥${fmt(sDiff)}`:'—'),
                 React.createElement('td',{style:{padding:'7px 6px',textAlign:'right'}},pos.covers!=null?`${pos.covers}名`:'—'),
                 React.createElement('td',{style:{padding:'7px 6px',textAlign:'right',color:status==='noapp'?'var(--text3)':'inherit'}},app?.totalCovers!=null?`${app.totalCovers}名`:'未入力'),
@@ -253,7 +258,7 @@ function PosCompareView({data,setData}){
           ),
           (()=>{
             const totPosSales=rows.reduce((s,r)=>s+(r.pos.sales||0),0);
-            const totAppSales=rows.reduce((s,r)=>s+(r.app?.totalSales||0),0);
+            const totAppSales=rows.reduce((s,r)=>s+(r.appSales||0),0);
             const totSDiff=rows.some(r=>r.sDiff!=null)?rows.reduce((s,r)=>s+(r.sDiff||0),0):null;
             const totPosCovers=rows.reduce((s,r)=>s+(r.pos.covers||0),0);
             const totAppCovers=rows.reduce((s,r)=>s+(r.app?.totalCovers||0),0);
@@ -2033,7 +2038,7 @@ function Reports({data,setData,goal,config}){
       )
     ),
     /* 照合ビュー */
-    period==='compare'&&React.createElement(PosCompareView,{data,setData})
+    period==='compare'&&React.createElement(PosCompareView,{data,setData,config})
   );
 }
 
