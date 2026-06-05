@@ -239,7 +239,7 @@ function PosCompareView({data,setData,config}){
             )
           ),
           React.createElement('tbody',null,
-            rows.map(({date,pos,app,sDiff,cDiff,sPct,status})=>{
+            rows.map(({date,pos,app,appSales,sDiff,cDiff,sPct,status})=>{
               const rowBg=status==='danger'?'#fff1f2':status==='warn'?'#fffbeb':status==='noapp'?'var(--surface)':'';
               const icon=status==='ok'?'✓':status==='danger'?'✗':status==='warn'?'△':status==='noapp'?'－':'●';
               const iconC=status==='ok'?'var(--green)':status==='danger'?'#ef4444':status==='warn'?'var(--amber)':'var(--text3)';
@@ -3270,7 +3270,7 @@ function App(){
                     const d=JSON.parse(ev.target.result);
                     if(!d||typeof d!=='object')throw new Error('無効なファイル');
                     if(window.confirm(`バックアップから復元しますか？\n現在のデータは上書きされます。\n\n含まれるデータ:\nZレポート ${(d.days||[]).length}日分\nテーブルレシート ${(d.tables||[]).length}件`)){
-                      setData({tables:d.tables||[],days:d.days||[]});
+                      setData({tables:d.tables||[],days:d.days||[],measures:d.measures||{},posData:d.posData||{}});
                       alert('復元しました');
                     }
                   }catch(err){alert('ファイルの読み込みに失敗しました: '+err.message);}
