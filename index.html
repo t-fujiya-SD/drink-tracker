@@ -926,6 +926,153 @@ function MeasuresCard({date,data,setData}){
   );
 }
 
+/* ── 人件費・食材費カード（FL管理） ── */
+function LaborFoodCard({date,data,setData}){
+  const dayRec=(data.days||[]).find(d=>d.date===date);
+  const [labor,setLabor]=useState(String(dayRec?.laborCost||''));
+  const [food,setFood]=useState(String(dayRec?.foodCost||''));
+  const [msg,setMsg]=useState('');
+  const [csvMsg,setCsvMsg]=useState('');
+  const [showCsv,setShowCsv]=useState(false);
+  const csvRef=useRef();
+
+  const totalSales=dayRec?.totalSales||0;
+  const lv=parseInt(labor)||0;
+  const fv=parseInt(food)||0;
+  const lRatio=totalSales>0&&lv>0?lv/totalSales:null;
+  const fRatio=totalSales>0&&fv>0?fv/totalSales:null;
+  const flRatio=totalSales>0&&(lv+fv)>0?(lv+fv)/totalSales:null;
+  const flColor=flRatio===null?'var(--text3)':flRatio<=0.55?'var(--green)':flRatio<=0.65?'var(--amber)':'#ef4444';
+  const flBorder=flRatio===null?'var(--border)':flRatio<=0.55?'#86efac':flRatio<=0.65?'#fcd34d':'#fca5a5';
+  const flBg=flRatio===null?'var(--surface)':flRatio<=0.55?'#f0fdf4':flRatio<=0.65?'#fffbeb':'#fff5f5';
+  const flLabel=flRatio===null?null:flRatio<=0.55?'✅ 良好':flRatio<=0.65?'⚠️ 要注意':'🔴 要改善';
+  const hasSaved=!!(dayRec?.laborCost||dayRec?.foodCost);
+
+  const handleSave=()=>{
+    const updated={...dayRec,laborCost:lv,foodCost:fv};
+    setData(prev=>({...prev,days:(prev.days||[]).map(d=>d.date===date?updated:d)}));
+    postDayToGas(updated);/* GASにも送信 */
+    setMsg('保存しました');setTimeout(()=>setMsg(''),2000);
+  };
+
+  const handleCsvFile=async f=>{
+    setCsvMsg('');
+    try{
+      const text=await f.text();
+      const lines=text.trim().split(/\r?\n/).filter(Boolean);
+      if(!lines.length)throw new Error('ファイルが空です');
+      const fl=lines[0].toLowerCase();
+      const skip=fl.includes('date')||fl.includes('日付')||fl.includes('labor')||fl.includes('人件費');
+      const rows=skip?lines.slice(1):lines;
+      const updates={};
+      rows.forEach(line=>{
+        const p=line.split(',').map(s=>s.trim().replace(/^"|"$/g,'').replace(/[¥,]/g,''));
+        if(!p[0]||!/^\d{4}-\d{2}-\d{2}$/.test(p[0]))return;
+        updates[p[0]]={laborCost:parseInt(p[1])||0,foodCost:p[2]?parseInt(p[2])||0:0};
+      });
+      const cnt=Object.keys(updates).length;
+      if(!cnt)throw new Error('有効なデータが見つかりません（形式：日付,人件費,食材費）');
+      setData(prev=>({...prev,days:(prev.days||[]).map(d=>updates[d.date]?{...d,...updates[d.date]}:d)}));
+      if(updates[date]){setLabor(String(updates[date].laborCost||''));setFood(String(updates[date].foodCost||''));}
+      setCsvMsg(`✓ ${cnt}日分のインポート完了`);
+    }catch(e){setCsvMsg('エラー: '+e.message);}
+  };
+
+  return React.createElement('div',{className:'card',style:{marginBottom:12,background:flBg,border:`0.5px solid ${flBorder}`}},
+    /* ヘッダー */
+    React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:700,display:'flex',alignItems:'center',gap:6}},
+        React.createElement('i',{className:'ti ti-chart-pie',style:{color:'var(--blue)'}}),
+        '業績入力（FL管理）'
+      ),
+      hasSaved&&React.createElement('span',{style:{fontSize:11,color:'var(--green)',display:'flex',alignItems:'center',gap:3,padding:'2px 8px',background:'#dcfce7',borderRadius:20}},
+        React.createElement('i',{className:'ti ti-check-circle'}),' 入力済み'
+      )
+    ),
+    /* 入力フィールド */
+    React.createElement('div',{className:'grid2',style:{marginBottom:10}},
+      React.createElement('div',null,
+        React.createElement('label',{className:'lbl'},'人件費（円）'),
+        React.createElement('input',{type:'number',value:labor,onChange:e=>setLabor(e.target.value),placeholder:'例: 63000'})
+      ),
+      React.createElement('div',null,
+        React.createElement('label',{className:'lbl'},'食材費・原価（円）'),
+        React.createElement('input',{type:'number',value:food,onChange:e=>setFood(e.target.value),placeholder:'例: 85000'})
+      )
+    ),
+    /* FL比率表示 */
+    (lv>0||fv>0)&&React.createElement('div',null,
+      React.createElement('div',{style:{display:'flex',gap:8,marginBottom:8}},
+        React.createElement('div',{className:'metric-card',style:{flex:2,border:`1.5px solid ${flColor}`}},
+          React.createElement('div',{className:'metric-val',style:{fontSize:22,color:flColor}},
+            flRatio!==null?`${(flRatio*100).toFixed(1)}%`:'—'
+          ),
+          React.createElement('div',{className:'metric-lbl'},'FL比率'),
+          flLabel&&React.createElement('div',{style:{fontSize:11,marginTop:3,color:flColor,fontWeight:600}},flLabel)
+        ),
+        React.createElement('div',{style:{flex:1,display:'flex',flexDirection:'column',gap:6}},
+          React.createElement('div',{className:'metric-card'},
+            React.createElement('div',{className:'metric-val',style:{fontSize:14}},fRatio!==null?`${(fRatio*100).toFixed(1)}%`:'—'),
+            React.createElement('div',{className:'metric-lbl'},'F比率（原価）')
+          ),
+          React.createElement('div',{className:'metric-card'},
+            React.createElement('div',{className:'metric-val',style:{fontSize:14}},lRatio!==null?`${(lRatio*100).toFixed(1)}%`:'—'),
+            React.createElement('div',{className:'metric-lbl'},'L比率（人件費）')
+          )
+        )
+      ),
+      /* プログレスバー */
+      React.createElement('div',{style:{marginBottom:10}},
+        React.createElement('div',{style:{position:'relative',height:10,background:'var(--surface3)',borderRadius:5,marginBottom:6}},
+          React.createElement('div',{style:{position:'absolute',left:0,top:0,height:'100%',width:`${Math.min((flRatio||0)*100,100)}%`,background:flColor,borderRadius:5,transition:'width .4s'}}),
+          React.createElement('div',{style:{position:'absolute',left:'55%',top:-2,bottom:-2,width:2,background:'rgba(42,158,85,0.5)',borderRadius:1}}),
+          React.createElement('div',{style:{position:'absolute',left:'65%',top:-2,bottom:-2,width:2,background:'rgba(220,38,38,0.4)',borderRadius:1}})
+        ),
+        React.createElement('div',{style:{display:'flex',justifyContent:'space-between',fontSize:9,color:'var(--text3)'}},
+          React.createElement('span',null,'0%'),
+          React.createElement('span',{style:{color:'var(--green)'}},'55%良好'),
+          React.createElement('span',{style:{color:'var(--red)'}},'65%危険'),
+          React.createElement('span',null,'100%')
+        )
+      )
+    ),
+    /* 保存・CSV */
+    React.createElement('div',{style:{display:'flex',gap:8}},
+      React.createElement('button',{
+        onClick:handleSave,disabled:!lv&&!fv,
+        className:'btn-primary',style:{flex:1,opacity:(!lv&&!fv)?0.4:1}
+      },React.createElement('i',{className:'ti ti-device-floppy'}),' 保存'),
+      React.createElement('button',{
+        onClick:()=>{setShowCsv(s=>!s);setCsvMsg('');},
+        style:{padding:'9px 12px',fontSize:12,color:'var(--text2)',display:'flex',alignItems:'center',gap:4,flexShrink:0,borderRadius:'var(--r)'}
+      },React.createElement('i',{className:'ti ti-file-import'}),' CSV一括')
+    ),
+    msg&&React.createElement('div',{style:{fontSize:12,color:'var(--green)',marginTop:6,display:'flex',alignItems:'center',gap:4}},
+      React.createElement('i',{className:'ti ti-check'}),msg
+    ),
+    /* CSV展開エリア */
+    showCsv&&React.createElement('div',{style:{marginTop:10,padding:'10px 12px',background:'var(--surface)',borderRadius:'var(--r)',border:'0.5px solid var(--border)'}},
+      React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'var(--text2)',marginBottom:4}},'CSVフォーマット（ヘッダー行は省略可）'),
+      React.createElement('pre',{style:{fontFamily:'monospace',fontSize:10,color:'var(--text2)',background:'var(--surface2)',padding:'6px 8px',borderRadius:4,marginBottom:8,overflowX:'auto',lineHeight:1.6}},
+        '日付,人件費,食材費\n2026-05-28,63000,85000\n2026-05-27,58000,72000'
+      ),
+      React.createElement('label',{
+        style:{display:'flex',alignItems:'center',gap:8,padding:'9px',background:'var(--blue)',color:'#fff',borderRadius:'var(--r)',cursor:'pointer',fontSize:13,fontWeight:600,justifyContent:'center'}
+      },
+        React.createElement('i',{className:'ti ti-upload'}),' CSVファイルを選択',
+        React.createElement('input',{ref:csvRef,type:'file',accept:'.csv,text/csv',style:{display:'none'},
+          onChange:e=>{const f=e.target.files[0];if(f)handleCsvFile(f);e.target.value='';}
+        })
+      ),
+      csvMsg&&React.createElement('div',{
+        style:{fontSize:12,marginTop:6,padding:'5px 8px',borderRadius:4,
+          color:csvMsg.startsWith('✓')?'var(--green)':'var(--red)',
+          background:csvMsg.startsWith('✓')?'#f0fdf4':'#fee2e2'}
+      },csvMsg)
+    )
+  );
+}
+
 /* ── Today Screen ── */
 function TodayScreen({apiKey,data,setData,goal,setGoal}){
   const [mode,setMode]=useState('table');
@@ -968,6 +1115,7 @@ function TodayScreen({apiKey,data,setData,goal,setGoal}){
         ))
       )
     ),
+    React.createElement(LaborFoodCard,{date:dateStr,data,setData}),
     React.createElement('div',{style:{fontSize:13,fontWeight:600,marginBottom:8}},`本日のテーブル（${tableRecords.length}件）`),
     tableRecords.length===0&&React.createElement('div',{className:'empty'},React.createElement('i',{className:'ti ti-receipt-off'}),'テーブル記録なし'),
     tableRecords.map(t=>React.createElement('div',{key:t.id,className:'card-sm',style:{marginBottom:6,borderLeft:'3px solid var(--blue)',display:'flex',justifyContent:'space-between',alignItems:'center'}},
@@ -1137,10 +1285,15 @@ function Reports({data,setData,goal,config}){
     const coversWithDC=datesWithDC.reduce((s,d)=>s+(d.totalCovers||0),0);
     /* net換算（税抜・サービス料抜き） */
     const nS=net(tS),nD=net(tD);
+    /* FL管理: 人件費・食材費（入力済み日のみ集計） */
+    const tL=filtered.reduce((s,d)=>s+(d.laborCost||0),0);
+    const tF=filtered.reduce((s,d)=>s+(d.foodCost||0),0);
+    const flDays=filtered.filter(d=>d.laborCost||d.foodCost).length;
     return{days:filtered.length,totalSales:nS,totalDrink:nD,totalCovers:tC,
       drinkPerCover:tC>0?nD/tC:0,drinkRatio:tS>0?tD/tS:0,avgDaily:nD/filtered.length,
       totalDC,drinksPerCover:coversWithDC>0&&totalDC!==null?totalDC/coversWithDC:null,
-      avgDrinkPrice:totalDC&&totalDC>0?Math.round(nD/totalDC):null};
+      avgDrinkPrice:totalDC&&totalDC>0?Math.round(nD/totalDC):null,
+      totalLabor:tL,totalFoodCost:tF,flDays};
   },[filtered,tablesByDate,data.days]);
 
   /* L/D 集計（フィルタ済み期間のテーブルデータから） */
@@ -1192,7 +1345,7 @@ function Reports({data,setData,goal,config}){
 
   /* 席別集計（テーブルデータを日付範囲で直接フィルタ） */
   const seatData=useMemo(()=>{
-    const tables=(data.tables||[]).filter(t=>t.seat&&t.date>=ldSeatRange.start&&t.date<=ldSeatRange.end);
+    const tables=uniqueTables.filter(t=>t.seat&&t.date>=ldSeatRange.start&&t.date<=ldSeatRange.end);
     if(!tables.length)return null;
     const map={};
     tables.forEach(t=>{
@@ -1213,9 +1366,12 @@ function Reports({data,setData,goal,config}){
     })).sort((a,b)=>b.drinkPerCover-a.drinkPerCover);/* 1人あたりD売上降順 */
   },[ldSeatRange,data.tables]);
 
-  /* L/D 集計（テーブルデータを日付範囲で直接フィルタ） */
+  /* L/D 集計（テーブルデータを日付範囲で直接フィルタ・重複除去済み） */
   const ldData=useMemo(()=>{
-    const tables=(data.tables||[]).filter(t=>t.date>=ldSeatRange.start&&t.date<=ldSeatRange.end);
+    const tables=uniqueTables.filter(t=>t.date>=ldSeatRange.start&&t.date<=ldSeatRange.end);
+    /* Zレポートの同期間の総客数（カバレッジ計算用） */
+    const zCovers=(rs&&re?days.filter(d=>d.date>=ldSeatRange.start&&d.date<=ldSeatRange.end):days.filter(d=>d.date>=ldSeatRange.start&&d.date<=ldSeatRange.end))
+      .reduce((s,d)=>s+(d.totalCovers||0),0);
     if(!tables.length)return null;
     const isLunch=t=>(t.time||'00:00')>='10:00'&&(t.time||'00:00')<'17:00';
     const agg=arr=>{
@@ -1228,8 +1384,12 @@ function Reports({data,setData,goal,config}){
         drinksPerCover:covers>0?dc/covers:0,
         drinkRatio:totalSales>0?drinkSales/totalSales:0};
     };
-    return{lunch:agg(tables.filter(isLunch)),dinner:agg(tables.filter(t=>!isLunch(t)))};
-  },[ldSeatRange,data.tables]);
+    const lunch=agg(tables.filter(isLunch));
+    const dinner=agg(tables.filter(t=>!isLunch(t)));
+    const scannedCovers=lunch.covers+dinner.covers;
+    const coveragePct=zCovers>0?Math.round(scannedCovers/zCovers*100):null;
+    return{lunch,dinner,scannedCovers,zCovers,coveragePct};
+  },[ldSeatRange,uniqueTables,days,rs,re]);
 
   if(!days.length)return React.createElement('div',{className:'empty'},
     React.createElement('i',{className:'ti ti-chart-bar-off'}),'まだデータがありません',
@@ -1344,9 +1504,36 @@ function Reports({data,setData,goal,config}){
           ...(summary.drinksPerCover!==null?[{l:'1人D杯数',v:`${fmt(summary.drinksPerCover,1)}杯`,c:'var(--blue)'}]:[]),
           ...(summary.avgDrinkPrice!==null?[{l:'平均D単価（税抜）',v:`¥${fmt(summary.avgDrinkPrice,0)}`,c:'var(--blue)'}]:[]),
         ];
+        /* FL比率セクション */
+        const hasFL=summary.totalLabor>0||summary.totalFoodCost>0;
+        const flTot=summary.totalLabor+summary.totalFoodCost;
+        const flR=summary.totalSales>0&&flTot>0?flTot/summary.totalSales:null;
+        const lR=summary.totalSales>0&&summary.totalLabor>0?summary.totalLabor/summary.totalSales:null;
+        const fR=summary.totalSales>0&&summary.totalFoodCost>0?summary.totalFoodCost/summary.totalSales:null;
+        const flC=flR===null?'var(--text3)':flR<=0.55?'var(--green)':flR<=0.65?'var(--amber)':'#ef4444';
+        const flLbl=flR===null?null:flR<=0.55?'✅ 良好':flR<=0.65?'⚠️ 要注意':'🔴 要改善';
         return React.createElement('div',null,
           React.createElement('div',{className:'grid3',style:{marginBottom:8}},row1.map(mkCard)),
-          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:8}},row2.map(mkCard))
+          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:8}},row2.map(mkCard)),
+          hasFL&&React.createElement('div',{style:{marginTop:10,paddingTop:10,borderTop:'0.5px solid var(--border)'}},
+            React.createElement('div',{style:{fontSize:11,color:'var(--text2)',marginBottom:6,display:'flex',alignItems:'center',gap:4}},
+              React.createElement('i',{className:'ti ti-chart-pie',style:{color:flC}}),
+              `FL管理（${summary.flDays}日分のデータ）`
+            ),
+            React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:8}},
+              [
+                {l:'FL比率',v:flR!==null?`${(flR*100).toFixed(1)}%`:'—',c:flC,sub:flLbl?React.createElement('div',{className:'metric-sub',style:{color:flC}},flLbl):null},
+                {l:'F比率（原価）',v:fR!==null?`${(fR*100).toFixed(1)}%`:'—',c:fR!==null?'var(--text)':undefined},
+                {l:'L比率（人件費）',v:lR!==null?`${(lR*100).toFixed(1)}%`:'—',c:lR!==null?'var(--text)':undefined},
+                {l:'食材費合計',v:`¥${fmt(summary.totalFoodCost)}`},
+                {l:'人件費合計',v:`¥${fmt(summary.totalLabor)}`},
+              ].map(({l,v,c,sub})=>React.createElement('div',{key:l,className:'metric-card'},
+                React.createElement('div',{className:'metric-val',style:{...(c?{color:c}:{})}},v),
+                React.createElement('div',{className:'metric-lbl'},l),
+                sub||null
+              ))
+            )
+          )
         );
       })(),
       ldFiltered&&(()=>{
@@ -1387,8 +1574,23 @@ function Reports({data,setData,goal,config}){
     ),
     /* L/D別ビュー */
     isLD&&React.createElement('div',{style:{marginBottom:10}},
-      React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginBottom:8,textAlign:'center'}},
+      React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginBottom:6,textAlign:'center'}},
         `集計期間: ${ldSeatRange.start} 〜 ${ldSeatRange.end}（テーブルレシートより）`
+      ),
+      ldData&&ldData.coveragePct!==null&&React.createElement('div',{
+        style:{
+          display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+          marginBottom:10,padding:'6px 12px',borderRadius:'var(--r)',
+          background:ldData.coveragePct>=80?'#f0fdf4':ldData.coveragePct>=50?'#fffbeb':'#fef2f2',
+          border:`0.5px solid ${ldData.coveragePct>=80?'#86efac':ldData.coveragePct>=50?'#fcd34d':'#fca5a5'}`,
+          fontSize:12
+        }
+      },
+        React.createElement('i',{className:`ti ti-${ldData.coveragePct>=80?'circle-check':'alert-triangle'}`,
+          style:{color:ldData.coveragePct>=80?'var(--green)':ldData.coveragePct>=50?'var(--amber)':'var(--red)'}}),
+        React.createElement('span',null,
+          `スキャン補足率 ${ldData.coveragePct}%（${ldData.scannedCovers}名スキャン済み / Zレポート${ldData.zCovers}名）`
+        )
       ),
       ldData
         ?React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:10}},
@@ -1602,7 +1804,7 @@ function Reports({data,setData,goal,config}){
       React.createElement('div',{className:'scroll-x'},
         React.createElement('table',null,
           React.createElement('thead',null,React.createElement('tr',null,
-            ['日付','客数','総売上','ドリンク売上','1人D売上','DR比率','D杯数'].map(h=>React.createElement('th',{key:h},h))
+            ['日付','客数','総売上','ドリンク売上','1人D売上','DR比率','D杯数','FL比率'].map(h=>React.createElement('th',{key:h},h))
           )),
           React.createElement('tbody',null,
             [...filtered].reverse().map(d=>{
@@ -1617,7 +1819,14 @@ function Reports({data,setData,goal,config}){
                 React.createElement('td',{style:{color:'var(--blue)',fontWeight:600}},`¥${fmt(net(d.drinkSales))}`),
                 React.createElement('td',{style:{color:'var(--blue)',fontWeight:700}},`¥${fmt(net(d.drinkPerCover),0)}`),
                 React.createElement('td',null,React.createElement('span',{style:{color:(d.drinkRatio||0)>=0.3?'var(--green)':'var(--amber)',fontWeight:600}},`${fmt((d.drinkRatio||0)*100,1)}%`)),
-                React.createElement('td',null,dc!==null?`${dc}杯`:'-')
+                React.createElement('td',null,dc!==null?`${dc}杯`:'-'),
+                (()=>{
+                  const lc=d.laborCost||0,fc=d.foodCost||0;
+                  if(!lc&&!fc)return React.createElement('td',{style:{color:'var(--text3)',fontSize:11}},'-');
+                  const fl=(lc+fc)/(net(d.totalSales)||1);
+                  const c=fl<=0.55?'var(--green)':fl<=0.65?'var(--amber)':'#ef4444';
+                  return React.createElement('td',null,React.createElement('span',{style:{color:c,fontWeight:600}},`${(fl*100).toFixed(1)}%`));
+                })()
               );
             })
           )
@@ -2436,9 +2645,12 @@ const sheetsToTime=v=>{
   if(!isNaN(n)&&n>=0&&n<1){const tot=Math.round(n*1440);return`${String(Math.floor(tot/60)).padStart(2,'0')}:${String(tot%60).padStart(2,'0')}`;}
   return'';
 };
-function convertSheetsRows(rows){
-  if(!Array.isArray(rows))return[];
-  return rows.filter(r=>r['合計']>0||r['D売上']>0).map(r=>({
+function convertSheetsRows(data){
+  /* 新フォーマット: {tables:[...], days:[...]}  旧フォーマット: [...] 両対応 */
+  const tableRows=Array.isArray(data)?data:(data&&data.tables?data.tables:[]);
+  const dayRows=(!Array.isArray(data)&&data&&data.days)?data.days:[];
+
+  const tables=tableRows.filter(r=>r['合計']>0||r['D売上']>0).map(r=>({
     id:uid(),
     date:sheetsToDate(r['日付']),
     time:sheetsToTime(r['退店時間']),
@@ -2454,12 +2666,56 @@ function convertSheetsRows(rows){
     drinksPerCover:parseInt(r['客数'])>0?(parseInt(r['D杯数'])||0)/(parseInt(r['客数'])||1):0,
     savedAt:new Date().toISOString()
   })).filter(r=>r.date);
+
+  const days=dayRows.filter(r=>r['日付']).map(r=>({
+    date:sheetsToDate(r['日付']),
+    totalSales:parseInt(r['総売上'])||0,
+    totalCovers:parseInt(r['総客数'])||0,
+    drinkSales:parseInt(r['D売上'])||0,
+    foodSales:parseInt(r['F売上'])||0,
+    drinkRatio:parseFloat(r['DR比率'])||0,
+    drinkPerCover:parseInt(r['総客数'])>0?(parseInt(r['D売上'])||0)/(parseInt(r['総客数'])||1):0,
+    laborCost:parseInt(r['人件費'])||0,
+    foodCost:parseInt(r['食材費'])||0,
+    closedAt:String(r['締め時刻']||''),
+    notes:''
+  })).filter(r=>r.date);
+
+  return{tables,days};
 }
-function applyImport(imported,setData){
-  if(!imported.length)return 0;
-  const existingDates=new Set(imported.map(r=>r.date));
-  setData(prev=>({...prev,tables:[...(prev.tables||[]).filter(t=>!existingDates.has(t.date)),...imported]}));
-  return imported.length;
+function applyImport({tables,days},setData){
+  if(!tables.length&&!days.length)return 0;
+  setData(prev=>{
+    /* テーブルデータ: GASの日付分をローカルと入れ替え */
+    const tDates=new Set(tables.map(r=>r.date));
+    const newTables=[...(prev.tables||[]).filter(t=>!tDates.has(t.date)),...tables];
+    /* 日次データ: GASのlaborCost/foodCostをマージ（ローカルにない日のみ上書き） */
+    const gDates=new Set(days.map(d=>d.date));
+    const mergedDays=[
+      ...(prev.days||[]).map(d=>gDates.has(d.date)?{...days.find(g=>g.date===d.date),...d,
+        /* GAS側の人件費・食材費は、ローカルに未入力の場合のみ適用 */
+        laborCost:d.laborCost||(days.find(g=>g.date===d.date)?.laborCost||0),
+        foodCost:d.foodCost||(days.find(g=>g.date===d.date)?.foodCost||0)
+      }:d),
+      ...days.filter(g=>!(prev.days||[]).find(d=>d.date===g.date))
+    ];
+    return{...prev,tables:newTables,days:mergedDays};
+  });
+  return tables.length;
+}
+
+/* 日次レコード（人件費・食材費含む）をGAS Web AppにPOST */
+async function postDayToGas(rec){
+  const gasUrl=localStorage.getItem(GAS_URL_KEY)||DEFAULT_GAS_URL;
+  if(!gasUrl)return;
+  try{
+    await fetch(gasUrl,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({...rec,type:'day'})
+    });
+  }catch(e){/* 失敗は無視 */}
 }
 
 /* テーブルレコード1件をGAS Web AppにPOST（fire-and-forget）*/
@@ -2491,13 +2747,13 @@ function SheetsImport({data,setData,autoStatus}){
     try{
       const res=await fetch(url);
       if(!res.ok)throw new Error('HTTP '+res.status);
-      const rows=await res.json();
-      if(!Array.isArray(rows))throw new Error('データ形式が正しくありません');
-      const imported=convertSheetsRows(rows);
-      if(!imported.length)throw new Error('インポートできるデータがありませんでした');
+      const raw=await res.json();
+      if(!raw||(!Array.isArray(raw)&&typeof raw!=='object'))throw new Error('データ形式が正しくありません');
+      const imported=convertSheetsRows(raw);
+      if(!imported.tables.length&&!imported.days.length)throw new Error('インポートできるデータがありませんでした');
       const cnt=applyImport(imported,setData);
-      const dates=new Set(imported.map(r=>r.date));
-      setMsg(`✓ ${cnt}件をインポートしました（${dates.size}日分）`);
+      const dates=new Set(imported.tables.map(r=>r.date));
+      setMsg(`✓ テーブル${imported.tables.length}件・日次${imported.days.length}日分をインポートしました`);
     }catch(e){setErr('エラー: '+e.message);}
     finally{setLoading(false);}
   };
@@ -2692,11 +2948,11 @@ function App(){
     setAutoMsg('sync');
     fetch(gasUrl)
       .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-      .then(rows=>{
-        const imported=convertSheetsRows(rows);
-        if(!imported.length){setAutoMsg('');return;}
+      .then(raw=>{
+        const imported=convertSheetsRows(raw);
+        if(!imported.tables.length&&!imported.days.length){setAutoMsg('');return;}
         applyImport(imported,setData);
-        setAutoMsg(`✓ ${imported.length}件 更新`);
+        setAutoMsg(`✓ ${imported.tables.length}件 更新`);
         setTimeout(()=>setAutoMsg(''),4000);
       })
       .catch(()=>setAutoMsg(''));/* 失敗は無視 */
