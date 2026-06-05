@@ -1249,10 +1249,12 @@ function Reports({data,setData,goal,config}){
     if(period==='daily'){return days.filter(d=>d.date===selDay);}
     if(period==='weekly'){return days.filter(d=>d.date>=weekRange.start&&d.date<=weekRange.end);}
     if(period==='monthly'){
-      /* selMonth が当月でデータなければ直近データ月にフォールバック */
       const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-      const targetM=(selMonth===curM&&!days.some(d=>d.date.startsWith(curM)))
-        ?((days.length>0)?days[days.length-1].date.slice(0,7):curM)
+      const zDays=data.days||[];
+      /* テーブルのみの日は除外してZレポートベースで判定 */
+      const hasCurrentMonth=zDays.some(d=>d.date.startsWith(curM));
+      const targetM=(!hasCurrentMonth&&selMonth===curM&&zDays.length>0)
+        ?[...zDays].sort((a,b)=>b.date.localeCompare(a.date))[0].date.slice(0,7)
         :selMonth;
       return days.filter(d=>d.date.startsWith(targetM));
     }
