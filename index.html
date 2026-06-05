@@ -250,7 +250,28 @@ function PosCompareView({data,setData}){
                 React.createElement('td',{style:{padding:'7px 6px',textAlign:'right',fontWeight:600,color:diffC(cDiff)}},cDiff!=null?`${cDiff>=0?'+':''}${cDiff}名`:'—')
               );
             })
-          )
+          ),
+          (()=>{
+            const totPosSales=rows.reduce((s,r)=>s+(r.pos.sales||0),0);
+            const totAppSales=rows.reduce((s,r)=>s+(r.app?.totalSales||0),0);
+            const totSDiff=rows.some(r=>r.sDiff!=null)?rows.reduce((s,r)=>s+(r.sDiff||0),0):null;
+            const totPosCovers=rows.reduce((s,r)=>s+(r.pos.covers||0),0);
+            const totAppCovers=rows.reduce((s,r)=>s+(r.app?.totalCovers||0),0);
+            const totCDiff=rows.some(r=>r.cDiff!=null)?rows.reduce((s,r)=>s+(r.cDiff||0),0):null;
+            const diffC=v=>v==null?'var(--text3)':Math.abs(v)===0?'var(--text2)':v>0?'var(--green)':'#ef4444';
+            return React.createElement('tfoot',null,
+              React.createElement('tr',{style:{background:'var(--surface2)',borderTop:'2px solid var(--border2)',fontWeight:700}},
+                React.createElement('td',{style:{padding:'8px 6px',fontSize:12}},'合計'),
+                React.createElement('td',null),
+                React.createElement('td',{style:{padding:'8px 6px',textAlign:'right'}},totPosSales>0?`¥${fmt(totPosSales)}`:'—'),
+                React.createElement('td',{style:{padding:'8px 6px',textAlign:'right'}},totAppSales>0?`¥${fmt(totAppSales)}`:'—'),
+                React.createElement('td',{style:{padding:'8px 6px',textAlign:'right',color:diffC(totSDiff)}},totSDiff!=null?`${totSDiff>=0?'+':''}¥${fmt(totSDiff)}`:'—'),
+                React.createElement('td',{style:{padding:'8px 6px',textAlign:'right'}},totPosCovers>0?`${totPosCovers}名`:'—'),
+                React.createElement('td',{style:{padding:'8px 6px',textAlign:'right'}},totAppCovers>0?`${totAppCovers}名`:'—'),
+                React.createElement('td',{style:{padding:'8px 6px',textAlign:'right',color:diffC(totCDiff)}},totCDiff!=null?`${totCDiff>=0?'+':''}${totCDiff}名`:'—')
+              )
+            );
+          })()
         )
       )
     ),
