@@ -117,15 +117,20 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function weekLabel(d){const dt=new Date(d+'T00:00:00');return`${dt.getMonth()+1}/${dt.getDate()}(${DAYS[dt.getDay()]})`}
 function getDOW(d){return DAYS[new Date(d+'T00:00:00').getDay()]}
 
-/* POS CSV（Shift-JIS タブ区切り）を日付→値マップにパース */
+/* POS CSV（UTF-16LE/Shift-JIS・タブ区切り）を日付→値マップにパース */
 function parsePosCSVByDate(text){
   const result={};
-  for(const line of text.split('\n')){
-    const cols=line.split('\t').map(c=>c.trim().replace(/^"|"$/g,'').trim());
+  /* BOM文字(﻿)を除去 */
+  const clean=text.replace(/^﻿/,'');
+  for(const line of clean.split(/\r?\n/)){
+    /* タブ区切り・ダブルクォート除去・前後空白除去 */
+    const cols=line.split('\t').map(c=>c.trim().replace(/^"+|"+$/g,'').trim());
     if(cols.length<5)continue;
+    /* 日付カラム（index 2）: "2026/05/01(木)" 形式 */
     const m=(cols[2]||'').match(/(\d{4})\/(\d{2})\/(\d{2})/);
     if(!m)continue;
     const date=`${m[1]}-${m[2]}-${m[3]}`;
+    /* 合計カラム（末尾）: "142,640" or "¥142,640" → 数値 */
     const raw=cols[cols.length-1];
     const num=parseInt(raw.replace(/[^0-9]/g,''))||0;
     if(num>0)result[date]=num;
@@ -146,7 +151,14 @@ function PosCompareView({data,setData}){
     const reader=new FileReader();
     reader.onload=e=>{
       try{
-        const text=new TextDecoder('shift-jis').decode(e.target.result);
+        /* BOMからエンコーディングを自動判定 */
+        const buf=e.target.result;
+        const b=new Uint8Array(buf);
+        const enc=b[0]===0xFF&&b[1]===0xFE?'utf-16le'
+          :b[0]===0xFE&&b[1]===0xFF?'utf-16be'
+          :b[0]===0xEF&&b[1]===0xBB&&b[2]===0xBF?'utf-8'
+          :'shift-jis';
+        const text=new TextDecoder(enc).decode(buf);
         const parsed=parsePosCSVByDate(text);
         const count=Object.keys(parsed).length;
         if(!count)throw new Error('日付データが見つかりませんでした（Shift-JIS形式か確認してください）');
