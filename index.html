@@ -181,8 +181,8 @@ function PosCompareView({data,setData,config}){
     return[...dates].sort().map(date=>{
       const pos=posData[date]||{};
       const app=(data.days||[]).find(d=>d.date===date);
-      /* アプリ側は月次と同じ税抜・サービス料抜きで比較 */
-      const appSales=app?.totalSales!=null?net(app.totalSales):null;
+      /* 照合は生数値（税込）で比較 — 月次のnet()は適用しない */
+      const appSales=app?.totalSales!=null?app.totalSales:null;
       const sDiff=pos.sales!=null&&appSales!=null?appSales-pos.sales:null;
       const cDiff=pos.covers!=null&&app?.totalCovers!=null?app.totalCovers-pos.covers:null;
       const sPct=pos.sales>0&&sDiff!==null?Math.abs(sDiff/pos.sales*100):null;
@@ -233,7 +233,7 @@ function PosCompareView({data,setData,config}){
         React.createElement('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:11}},
           React.createElement('thead',null,
             React.createElement('tr',{style:{background:'var(--surface2)',borderBottom:'1px solid var(--border)'}},
-              ['日付','','POS売上','アプリ売上(税抜)','差額','POS客数','アプリ客数','差'].map((h,i)=>
+              ['日付','','POS売上','アプリ売上(税込)','差額','POS客数','アプリ客数','差'].map((h,i)=>
                 React.createElement('th',{key:i,style:{padding:'8px 6px',textAlign:i>=2?'right':'left',fontWeight:600,color:'var(--text2)',whiteSpace:'nowrap'}},h)
               )
             )
