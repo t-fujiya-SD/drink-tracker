@@ -117,6 +117,139 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function weekLabel(d){const dt=new Date(d+'T00:00:00');return`${dt.getMonth()+1}/${dt.getDate()}(${DAYS[dt.getDay()]})`}
 function getDOW(d){return DAYS[new Date(d+'T00:00:00').getDay()]}
 
+/* POS CSV（Shift-JIS タブ区切り）を日付→値マップにパース */
+function parsePosCSVByDate(text){
+  const result={};
+  for(const line of text.split('\n')){
+    const cols=line.split('\t').map(c=>c.trim().replace(/^"|"$/g,'').trim());
+    if(cols.length<5)continue;
+    const m=(cols[2]||'').match(/(\d{4})\/(\d{2})\/(\d{2})/);
+    if(!m)continue;
+    const date=`${m[1]}-${m[2]}-${m[3]}`;
+    const raw=cols[cols.length-1];
+    const num=parseInt(raw.replace(/[^0-9]/g,''))||0;
+    if(num>0)result[date]=num;
+  }
+  return result;
+}
+
+/* POS照合ビュー */
+function PosCompareView({data,setData}){
+  const {useState,useMemo,useRef}=React;
+  const [msg,setMsg]=useState('');
+  const salesRef=useRef();
+  const coversRef=useRef();
+  const posData=data.posData||{};
+
+  const loadFile=(file,type)=>{
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const text=new TextDecoder('shift-jis').decode(e.target.result);
+        const parsed=parsePosCSVByDate(text);
+        const count=Object.keys(parsed).length;
+        if(!count)throw new Error('日付データが見つかりませんでした（Shift-JIS形式か確認してください）');
+        setData(prev=>{
+          const pos={...(prev.posData||{})};
+          Object.entries(parsed).forEach(([d,v])=>{if(!pos[d])pos[d]={};pos[d][type]=v;});
+          return{...prev,posData:pos};
+        });
+        setMsg(`✓ ${type==='sales'?'売上':'客数'}CSV: ${count}日分を読み込みました`);
+      }catch(err){setMsg('❌ '+err.message);}
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const rows=useMemo(()=>{
+    const dates=new Set([...Object.keys(posData),...(data.days||[]).map(d=>d.date)]);
+    return[...dates].sort().map(date=>{
+      const pos=posData[date]||{};
+      const app=(data.days||[]).find(d=>d.date===date);
+      const sDiff=pos.sales!=null&&app?.totalSales!=null?app.totalSales-pos.sales:null;
+      const cDiff=pos.covers!=null&&app?.totalCovers!=null?app.totalCovers-pos.covers:null;
+      const sPct=pos.sales>0&&sDiff!==null?Math.abs(sDiff/pos.sales*100):null;
+      const status=pos.sales==null&&pos.covers==null?'apponly'
+        :!app?'noapp'
+        :sPct>10||Math.abs(cDiff||0)>5?'danger'
+        :sPct>3||Math.abs(cDiff||0)>2?'warn'
+        :'ok';
+      return{date,pos,app,sDiff,cDiff,sPct,status};
+    });
+  },[posData,data.days]);
+
+  const counts={ok:rows.filter(r=>r.status==='ok').length,warn:rows.filter(r=>r.status==='warn').length,danger:rows.filter(r=>r.status==='danger').length,noapp:rows.filter(r=>r.status==='noapp').length};
+
+  return React.createElement('div',null,
+    /* アップロードエリア */
+    React.createElement('div',{className:'card',style:{marginBottom:10}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:700,marginBottom:10,display:'flex',alignItems:'center',gap:6}},
+        React.createElement('i',{className:'ti ti-file-spreadsheet',style:{color:'var(--blue)'}}),
+        'POSデータをアップロード'
+      ),
+      React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:8}},
+        ['sales','covers'].map(type=>React.createElement('label',{key:type,style:{display:'flex',flexDirection:'column',gap:4,cursor:'pointer',padding:'10px 12px',border:'1px dashed var(--border2)',borderRadius:'var(--r)',textAlign:'center',background:'var(--surface)'}},
+          React.createElement('i',{className:`ti ti-${type==='sales'?'currency-yen':'users'}`,style:{fontSize:20,color:'var(--blue)'}}),
+          React.createElement('span',{style:{fontSize:12,fontWeight:600}},type==='sales'?'売上CSV':'客数CSV'),
+          React.createElement('span',{style:{fontSize:10,color:'var(--text3)'}},'（Shift-JIS・タブ区切り）'),
+          React.createElement('input',{type:'file',accept:'.csv,.tsv,text/*',style:{display:'none'},
+            onChange:e=>loadFile(e.target.files[0],type)})
+        ))
+      ),
+      msg&&React.createElement('div',{style:{fontSize:12,color:msg.startsWith('❌')?'var(--red)':'var(--green)',padding:'6px 8px',background:msg.startsWith('❌')?'#fee2e2':'#f0fdf4',borderRadius:'var(--r)'}},msg),
+      Object.keys(posData).length>0&&React.createElement('button',{
+        onClick:()=>{if(window.confirm('POSデータを削除しますか？'))setData(prev=>({...prev,posData:{}}));},
+        style:{marginTop:8,padding:'4px 10px',fontSize:11,color:'var(--text3)'}
+      },'POSデータをクリア')
+    ),
+    /* サマリー */
+    rows.length>0&&React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:10}},
+      [{l:'一致',v:counts.ok,c:'var(--green)',bg:'#f0fdf4'},{l:'要確認',v:counts.warn,c:'var(--amber)',bg:'#fffbeb'},{l:'ズレあり',v:counts.danger,c:'#ef4444',bg:'#fee2e2'},{l:'未入力',v:counts.noapp,c:'var(--text3)',bg:'var(--surface)'}]
+      .map(({l,v,c,bg})=>React.createElement('div',{key:l,style:{textAlign:'center',padding:'8px 4px',background:bg,borderRadius:'var(--r)',border:`0.5px solid ${c}`}},
+        React.createElement('div',{style:{fontSize:18,fontWeight:700,color:c}},v),
+        React.createElement('div',{style:{fontSize:10,color:'var(--text2)'}},l)
+      ))
+    ),
+    /* 照合テーブル */
+    rows.length>0&&React.createElement('div',{className:'card',style:{padding:0,overflow:'hidden'}},
+      React.createElement('div',{style:{overflowX:'auto'}},
+        React.createElement('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:11}},
+          React.createElement('thead',null,
+            React.createElement('tr',{style:{background:'var(--surface2)',borderBottom:'1px solid var(--border)'}},
+              ['日付','','POS売上','アプリ売上','差額','POS客数','アプリ客数','差'].map((h,i)=>
+                React.createElement('th',{key:i,style:{padding:'8px 6px',textAlign:i>=2?'right':'left',fontWeight:600,color:'var(--text2)',whiteSpace:'nowrap'}},h)
+              )
+            )
+          ),
+          React.createElement('tbody',null,
+            rows.map(({date,pos,app,sDiff,cDiff,sPct,status})=>{
+              const rowBg=status==='danger'?'#fff1f2':status==='warn'?'#fffbeb':status==='noapp'?'var(--surface)':'';
+              const icon=status==='ok'?'✓':status==='danger'?'✗':status==='warn'?'△':status==='noapp'?'－':'●';
+              const iconC=status==='ok'?'var(--green)':status==='danger'?'#ef4444':status==='warn'?'var(--amber)':'var(--text3)';
+              const diffC=v=>v==null?'var(--text3)':Math.abs(v)===0?'var(--text2)':v>0?'var(--green)':'#ef4444';
+              return React.createElement('tr',{key:date,style:{background:rowBg,borderBottom:'0.5px solid var(--border)'}},
+                React.createElement('td',{style:{padding:'7px 6px',fontWeight:600,whiteSpace:'nowrap'}},weekLabel(date)),
+                React.createElement('td',{style:{padding:'7px 4px',color:iconC,fontWeight:700,fontSize:13}},icon),
+                React.createElement('td',{style:{padding:'7px 6px',textAlign:'right'}},pos.sales!=null?`¥${fmt(pos.sales)}`:'—'),
+                React.createElement('td',{style:{padding:'7px 6px',textAlign:'right',color:status==='noapp'?'var(--text3)':'inherit'}},app?.totalSales!=null?`¥${fmt(app.totalSales)}`:'未入力'),
+                React.createElement('td',{style:{padding:'7px 6px',textAlign:'right',fontWeight:600,color:diffC(sDiff)}},sDiff!=null?`${sDiff>=0?'+':''}¥${fmt(sDiff)}`:'—'),
+                React.createElement('td',{style:{padding:'7px 6px',textAlign:'right'}},pos.covers!=null?`${pos.covers}名`:'—'),
+                React.createElement('td',{style:{padding:'7px 6px',textAlign:'right',color:status==='noapp'?'var(--text3)':'inherit'}},app?.totalCovers!=null?`${app.totalCovers}名`:'未入力'),
+                React.createElement('td',{style:{padding:'7px 6px',textAlign:'right',fontWeight:600,color:diffC(cDiff)}},cDiff!=null?`${cDiff>=0?'+':''}${cDiff}名`:'—')
+              );
+            })
+          )
+        )
+      )
+    ),
+    rows.length===0&&React.createElement('div',{className:'empty'},
+      React.createElement('i',{className:'ti ti-file-spreadsheet'}),
+      'POSのCSVファイルをアップロードしてください',
+      React.createElement('div',{style:{fontSize:12,marginTop:4}},'売上CSV・客数CSV（Shift-JIS形式）に対応')
+    )
+  );
+}
+
 /* ── PDF.js テキスト抽出 ── */
 async function loadPDFJS(){
   if(window.pdfjsLib)return;
@@ -1438,7 +1571,7 @@ function Reports({data,setData,goal,config}){
     /* 期間セレクタ */
     React.createElement('div',{style:{marginBottom:12}},
       React.createElement('div',{className:'seg-ctrl'},
-        [{v:'daily',l:'日次'},{v:'weekly',l:'週次'},{v:'monthly',l:'月次'},{v:'dow',l:'曜日別'},{v:'ld',l:'L/D別'},{v:'seat',l:'席別'},{v:'custom',l:'期間'}].map(({v,l})=>
+        [{v:'daily',l:'日次'},{v:'weekly',l:'週次'},{v:'monthly',l:'月次'},{v:'dow',l:'曜日別'},{v:'ld',l:'L/D別'},{v:'seat',l:'席別'},{v:'custom',l:'期間'},{v:'compare',l:'照合'}].map(({v,l})=>
           React.createElement('button',{key:v,className:`seg-btn${period===v?' active':''}`,onClick:()=>setPeriod(v)},l)
         )
       ),
@@ -1865,7 +1998,9 @@ function Reports({data,setData,goal,config}){
           )
         )
       )
-    )
+    ),
+    /* 照合ビュー */
+    period==='compare'&&React.createElement(PosCompareView,{data,setData})
   );
 }
 
