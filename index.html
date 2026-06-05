@@ -1195,6 +1195,11 @@ function Reports({data,setData,goal,config}){
   const [expandedSeat,setExpandedSeat]=useState(null);
   const fmtD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const [selDay,setSelDay]=useState(()=>{const d=new Date();d.setDate(d.getDate()-1);return fmtD(d);});
+  /* 月次ナビ: データがある最新月を初期値にする */
+  const [selMonth,setSelMonth]=useState(()=>{
+    const now=new Date();
+    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  });
 
   /* 重複除去済みテーブルデータ（全計算で共通使用） */
   const uniqueTables=useMemo(()=>{
@@ -1243,7 +1248,14 @@ function Reports({data,setData,goal,config}){
     const w7=fmtL(new Date(now.getFullYear(),now.getMonth(),now.getDate()-6));
     if(period==='daily'){return days.filter(d=>d.date===selDay);}
     if(period==='weekly'){return days.filter(d=>d.date>=weekRange.start&&d.date<=weekRange.end);}
-    if(period==='monthly'){const m=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;return days.filter(d=>d.date.startsWith(m));}
+    if(period==='monthly'){
+      /* selMonth が当月でデータなければ直近データ月にフォールバック */
+      const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+      const targetM=(selMonth===curM&&!days.some(d=>d.date.startsWith(curM)))
+        ?((days.length>0)?days[days.length-1].date.slice(0,7):curM)
+        :selMonth;
+      return days.filter(d=>d.date.startsWith(targetM));
+    }
     if(period==='custom'||period==='ld'||period==='seat'){if(rs&&re)return days.filter(d=>d.date>=rs&&d.date<=re);return days.filter(d=>d.date>=w7);}
     return days;
   },[days,period,rs,re,selDay,weekRange]);
@@ -1449,6 +1461,25 @@ function Reports({data,setData,goal,config}){
           React.createElement('i',{className:'ti ti-chevron-right'})
         )
       ),
+      period==='monthly'&&React.createElement('div',{style:{display:'flex',gap:6,alignItems:'center',marginTop:8}},(()=>{
+        const [sy,sm]=selMonth.split('-').map(Number);
+        const prevM=`${sm===1?sy-1:sy}-${String(sm===1?12:sm-1).padStart(2,'0')}`;
+        const nextM=`${sm===12?sy+1:sy}-${String(sm===12?1:sm+1).padStart(2,'0')}`;
+        const now=new Date();
+        const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        return[
+          React.createElement('button',{key:'prev',onClick:()=>setSelMonth(prevM),style:{padding:'6px 10px',flexShrink:0}},
+            React.createElement('i',{className:'ti ti-chevron-left'})
+          ),
+          React.createElement('div',{key:'lbl',style:{flex:1,textAlign:'center',fontSize:13,fontWeight:600,color:'var(--text1)'}},
+            `${sy}年${sm}月`,
+            selMonth===curM&&React.createElement('span',{style:{fontSize:11,color:'var(--text3)',marginLeft:6}},'(今月)')
+          ),
+          React.createElement('button',{key:'next',onClick:()=>setSelMonth(nextM),disabled:nextM>curM,style:{padding:'6px 10px',flexShrink:0}},
+            React.createElement('i',{className:'ti ti-chevron-right'})
+          )
+        ];
+      })()),
       (period==='custom'||period==='ld'||period==='seat')&&React.createElement('div',{style:{marginTop:8}},
         React.createElement('div',{style:{display:'flex',gap:6,alignItems:'center',marginBottom:6}},
           React.createElement('input',{type:'date',value:pendingRs,onChange:e=>setPendingRs(e.target.value),style:{flex:1},placeholder:'開始日'}),
